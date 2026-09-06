@@ -1,0 +1,910 @@
+/* 通用按钮/徽章/表单输入控件已改用 Naive UI（n-button/n-tag/n-input 等，
+   见 src/components/*.vue），这里只保留自定义日历网格用得到的样式。 */
+
+/* 用 class 而不是裸 `label` 标签选择器，避免污染 Naive UI 组件内部
+   （比如 n-checkbox/n-radio）自己渲染出来的 <label> 元素。 */
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.checkbox-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* 阶段进度条 */
+.phase-progress {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.phase-progress__bar {
+  display: flex;
+  gap: 3px;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.phase-segment {
+  flex: 1;
+  opacity: 0.35;
+}
+
+.phase-segment--current {
+  opacity: 1;
+}
+
+/* REQ-057：删掉了「阶段」文字进度条上原来那行具体的"当前阶段：XX阶段
+   （第 N 周 / 阶段共 M 周）"文案（用户反馈这行信息没必要），下面这行
+   年度百分比进度紧跟色块条，补上原来靠 .phase-progress__label 的
+   margin-top 撑开的间距，不然两者会贴在一起。*/
+.phase-progress__year {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 周视图（时间轴网格样式在 css/timeline.css 的 .week-timeline* 里，
+   跟日视图共用同一套时间块视觉；这里只留周视图日期头部用到的小样式）。 */
+.week-column__weekday {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.week-column__date {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* 节假日只做展示（REQ-011），周视图空间紧张，只给日期数字变个色，
+   完整假日名放进 .week-timeline__day-header 的 title 属性做原生 tooltip，
+   悬浮就能看到，不占布局空间。 */
+.week-column__date--holiday {
+  color: var(--danger);
+}
+
+.week-column__date--workday {
+  color: var(--text-muted);
+}
+
+.drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+}
+
+/* 兴趣活动库（REQ-048，原"活动库"/"体验库"；REQ-049 调整筛选区位置和
+   网格列数；REQ-050 搜索框重新设计；REQ-082 去掉类别筛选，只剩搜索框
+   一项，水平居中，不再挤在页头右上角）。 */
+.activity-library__filters {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+/* 搜索框（REQ-050）：用户反馈原来的样式太简陋——`round` + 加大尺寸
+   + 阴影分层（悬浮态阴影加深），呼应 REQ-007 时"卡片类容器靠阴影而不是
+   边框分隔层次"的整体视觉方向，不是孤立的新写法。`n-input` 没有把
+   `class` 声明成自己的 prop，Vue 会把这个 class 透传到组件渲染出来的
+   根节点上，所以这里可以直接写普通的类选择器，不需要 `:deep()`
+   ——这个项目的组件样式统一放在 css/*.css 这种全局样式表里，没有用
+   `<style scoped>`，`:deep()` 在这里也没有意义。 */
+.activity-library__search {
+  width: min(440px, 100%);
+  box-shadow: var(--shadow-elevation-1);
+  border-radius: 999px;
+  transition: box-shadow 0.15s ease;
+}
+
+.activity-library__search:hover,
+.activity-library__search:focus-within {
+  box-shadow: var(--shadow-elevation-2);
+}
+
+/* 横屏封面卡片网格——固定 4 列（REQ-049：用户反馈 `auto-fill` 在宽屏下
+   会挤出 5-6 列，卡片跟着变小，改成固定列数，卡片跟着可用宽度等比放大，
+   不再随视口越宽卡片越小）。900px 断点下收成 2 列，配合
+   `css/layout.css` 里侧边栏在这个断点变成抽屉的响应式设计保持一致，
+   避免窄屏下 4 列被挤得太窄。 */
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .activity-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.activity-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-elevation-1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.activity-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevation-2);
+}
+
+/* 16:9 横屏封面——`aspect-ratio` 而不是固定像素高度，卡片宽度随网格
+   自适应时封面比例始终一致。没有图片时（`.activity-card__cover--
+   placeholder`）背景是固定的强调色 + 居中大 emoji 占位
+   （`activity-card__cover-icon`，v-if 挡住有图时不渲染）——REQ-053/058
+   期间这个占位背景/emoji 是按活动类别哈希取色/取值算出的斜向渐变，
+   REQ-082 分类功能整个删除后改成固定样式，不再需要任何"按什么取值"的
+   逻辑。 */
+.activity-card__cover {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-card__cover--placeholder {
+  background: var(--accent);
+}
+
+.activity-card__cover-icon {
+  font-size: 40px;
+}
+
+.activity-card__cover-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.activity-card:hover .activity-card__cover-actions {
+  opacity: 1;
+}
+
+.activity-card__icon-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(8, 17, 26, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-card__icon-btn:hover {
+  background: rgba(8, 17, 26, 0.8);
+}
+
+.activity-card__title {
+  font-weight: 600;
+  padding: 10px 12px 0;
+}
+
+/* 内容摘要（REQ-080）：卡片上直接露出一小段正文纯文本，两行截断——
+   卡片本来就是固定尺寸的网格项，摘要长度必须严格封顶，不能让某一条
+   摘要特别长就把整张卡片撑高、破坏网格的整齐排列。 */
+.activity-card__summary {
+  padding: 4px 12px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.activity-form {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-elevation-1);
+}
+
+.activity-form__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 兴趣活动详情弹层（ActivityModal.vue，REQ-048；REQ-080 改成"攻略笔记"
+   排版——弹层本身在 .vue 文件里加宽到 min(1100px, 100vw-48px)，这里
+   负责阅读区/编辑区内部的排版细节。 */
+/* REQ-081：编辑/删除按钮从底部挪到详情区右上角悬浮，跟 ActivityCard.vue
+   缩略图上的悬浮按钮共用 .activity-card__icon-btn 样式；这里常驻显示，
+   不需要 hover 才出现的透明度过渡。没有封面图时用 padding-top 留出一块
+   空间给按钮，避免盖住下面紧挨着的分类标签。 */
+.activity-modal__view {
+  position: relative;
+}
+
+.activity-modal__view--no-cover {
+  padding-top: 34px;
+}
+
+.activity-modal__cover-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 1;
+}
+
+.activity-modal__image {
+  width: 100%;
+  aspect-ratio: 21 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+}
+
+/* 阅读区（REQ-080）：单独滚动，不让整个弹层随长文章无限拉高超出视口；
+   85vh 是弹层本身允许的最大高度的经验值，配合上面 image/meta-row 和
+   下面按钮行留出的空间，实测比直接用 90vh 更不容易在常见笔记本屏幕
+   分辨率下被浏览器地址栏/任务栏顶出视口。 */
+.activity-modal__reading {
+  max-height: 62vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.activity-modal__content {
+  font-size: 15px;
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+
+.activity-modal__content :is(h1, h2, h3) {
+  margin: 18px 0 8px;
+  line-height: 1.4;
+}
+
+.activity-modal__content p {
+  margin: 10px 0;
+}
+
+.activity-modal__content ul {
+  margin: 10px 0;
+  padding-left: 22px;
+}
+
+.activity-modal__content li {
+  margin: 4px 0;
+}
+
+.activity-modal__content a {
+  color: var(--accent-strong);
+}
+
+.activity-modal__content-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 写/预览双栏编辑区（REQ-080，用户反馈"编辑的时候也太小了"）：固定
+   高度而不是靠文本框自适应内容撑高——写长文档时更接近"打开一个文档
+   编辑器"的体验，而不是一个会不断变形的表单控件。 */
+.activity-modal__editor {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  height: 46vh;
+}
+
+.activity-modal__editor-input {
+  height: 100%;
+}
+
+.activity-modal__editor-input textarea {
+  height: 100% !important;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.activity-modal__editor-preview {
+  height: 100%;
+  overflow-y: auto;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+}
+
+.activity-modal__upload-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.activity-modal__upload-btn:hover {
+  border-color: var(--accent-strong);
+  color: var(--text-primary);
+}
+
+.activity-modal__upload-btn input[type='file'] {
+  display: none;
+}
+
+/* 窄屏（同一个 900px 断点，见 REQ-027 响应式适配）下双栏写不下，改成
+   写/预览各占一行上下堆叠。 */
+@media (max-width: 900px) {
+  .activity-modal__editor {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .activity-modal__editor-input textarea {
+    height: 220px !important;
+  }
+
+  .activity-modal__editor-preview {
+    height: 220px;
+  }
+}
+
+.empty-state {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 40px 0;
+}
+
+/* 设置面板 */
+.settings-section {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-elevation-1);
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.settings-field {
+  margin-bottom: 4px;
+}
+
+/* 外观分区（REQ-011）：色板 + 「跟随主题默认」按钮排一行。 */
+.settings-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 背景图片缩略预览（REQ-077）：小方块，圆角+阴影和其它卡片元素统一，
+   本地文件（data: URI）和外部 URL 用同一份样式，不需要区分来源。 */
+.background-image-preview {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background-size: cover;
+  background-position: center;
+  box-shadow: var(--shadow-elevation-1);
+}
+
+/* data: URI 来源的背景图不再把原始长字符串塞进输入框里显示（REQ-077），
+   改成这句友好提示占位，视觉上和旁边的 n-input 保持同等高度/字号。 */
+.background-image-local-label {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* 长期目标的新增表单（REQ-016）：标题/阶段/周数/按钮四个控件，窄屏放
+   不下就换行，不强行挤在一行。 */
+.settings-goal-form {
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.settings-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
+
+/* flex-wrap:wrap 而不是缩小字号——EventModal.vue 编辑一个周期事件时这里
+   最多有 4 个按钮（保存/取消/删除此次/删除整个系列），中文尚可、切到
+   英文/日文或者窄屏时很容易一行放不下，用户反馈过"详情画面也有字体一行
+   显示不完的问题"，希望这个弹层里的字体不用跟事件块一样缩小，所以用
+   换行而不是继续压字号来解决。 */
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* 表格横向滚动兜底（REQ-027）：不加媒体查询限制——只有内容实际超出
+   容器宽度时 overflow-x:auto 才会出现滚动条，宽屏下是无操作的空规则，
+   不需要额外判断视口宽度。用在 .quota-table 外面（设置页的阶段×类别
+   配额表、奖励页的待兑换/已兑换列表），避免窄屏下表格内容被截断或撑破
+   父容器布局。 */
+.table-scroll {
+  overflow-x: auto;
+}
+
+.quota-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.quota-table th, .quota-table td {
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.hint-text {
+  font-size: 12px;
+}
+
+/* Google 同步 Step 1 引导步骤（REQ-056）：编号列表 + 行内链接，取代
+   之前"配置步骤见 README"这句无法操作的死文字。 */
+.sync-guide-list {
+  margin: 8px 0 12px;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sync-guide-list a {
+  color: var(--accent);
+  margin-left: 4px;
+}
+
+.sync-origin-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.sync-origin-value {
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.warning-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--warning);
+  font-size: 12px;
+}
+
+/* 主题切换按钮（包裹 n-button，只做侧边栏内的定位） */
+.theme-toggle {
+  margin-top: auto;
+  padding-top: 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  text-align: left;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.theme-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* 月度视图 */
+.month-grid {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-elevation-1);
+}
+
+.month-grid__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.month-grid__weekday {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 8px 0;
+}
+
+.month-grid__cells {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 92px;
+}
+
+/* 月视图窄屏适配（REQ-027）：7 等分的网格本身靠 fr 单位天然会随视口
+   收缩，不像周视图那样需要横向滚动；只是原来 92px 的固定行高在窄屏下
+   配上变窄的列会显得偏"细高"，缩小一档更紧凑、也给内容（日期数字+
+   假日名+事件圆点）留更合适的比例。 */
+@media (max-width: 900px) {
+  .month-grid__cells {
+    grid-auto-rows: 76px;
+  }
+
+  .month-cell {
+    padding: 4px;
+    gap: 4px;
+  }
+}
+
+.month-cell {
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.12s ease;
+}
+
+.month-cell:hover {
+  background: var(--bg-hover);
+}
+
+.month-cell--outside {
+  opacity: 0.4;
+}
+
+.month-cell--today .month-cell__date {
+  background: var(--accent-strong);
+  color: var(--accent-contrast);
+  border-radius: 999px;
+}
+
+.month-cell__date {
+  font-size: 12px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 节假日名称（REQ-011），红色沿用日历标红假日的通用惯例；调休上班的
+   那几天用淡化的静音色区分，不抢眼但仍能一眼看出"这天要上班"。 */
+.month-cell__holiday {
+  font-size: 10px;
+  color: var(--danger);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.month-cell__holiday--workday {
+  color: var(--text-muted);
+}
+
+.month-cell__dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.event-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.event-dot-more {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* 年度视图（REQ-060 新增，REQ-068 改版）：12 张迷你月历卡片铺成响应式
+   网格，格子比月视图小得多，容不下假日名/事件圆点这类细节，只保留"这天
+   属不属于当前月"和"是不是今天"两种状态。REQ-060 时期原本还有一套按
+   当天事件数量染色的热力图（0~4 五档），用户反馈"不要标注事件颜色深的
+   深度"，REQ-068 整个去掉，换成下面 `.year-month__label*` 这套月度
+   标语（给月份目标做标记用，纯自由文本）。 */
+.year-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.year-month {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevation-1);
+  padding: 10px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.year-month:hover {
+  background: var(--bg-hover);
+}
+
+.year-month__title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+/* 月度标语（REQ-068）：固定一行高度（min-height 撑住），有没有标语都
+   不会让月份卡片跟着抖动大小。 */
+.year-month__label {
+  min-height: 22px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.year-month__label-text {
+  font-size: 11px;
+  color: var(--accent);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  cursor: text;
+}
+
+.year-month__label-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.year-month:hover .year-month__label-add {
+  opacity: 1;
+}
+
+.year-month__label-add:hover {
+  color: var(--accent);
+}
+
+.year-month__cells {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.year-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: var(--text-muted);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.year-day--blank {
+  cursor: default;
+}
+
+.year-day--in-month {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+/* 节假日标注（REQ-068）：颜色惯例和 .month-cell__holiday 一致（放假红/
+   调休静音色），只是格子太小放不下文字，靠 title 属性 hover 提示假日名。
+   .year-day--today 放在这两条规则之后，同一天既是"今天"又被标了假日/
+   调休这种罕见情况下，今天的描边优先生效。 */
+.year-day--holiday {
+  background: color-mix(in srgb, var(--danger) 22%, var(--bg-tertiary));
+  color: var(--danger);
+}
+
+.year-day--workday {
+  box-shadow: inset 0 0 0 1px var(--text-muted);
+}
+
+.year-day--today {
+  box-shadow: inset 0 0 0 1.5px var(--accent-strong);
+  color: var(--text-primary);
+}
+
+/* 计划面板（REQ-017）。新建计划表单复用 .activity-form 的卡片外观，
+   这里只补关键事件那一组特有的行内布局。 */
+.plan-form__title {
+  margin-bottom: 12px;
+}
+
+.plan-form__key-events {
+  margin-bottom: 12px;
+}
+
+.plan-form__key-event-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.plan-key-event__index {
+  width: 20px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.plan-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-elevation-1);
+}
+
+/* 已废止计划（REQ-038）：整卡片调暗，直观传达"这份计划不能再操作了"
+   ——折叠按钮仍然正常可用（查看不受影响，只是不能编辑/废止/添加新的
+   关键事件），标题编辑铅笔、废止按钮、关键事件的编辑/删除按钮已经在
+   模板里用 v-if 整个不渲染了，这里的 opacity 是视觉上的进一步强化，
+   和 .plan-key-event--locked 用的是同一档暗度惯例。 */
+.plan-card--abolished {
+  opacity: 0.55;
+}
+
+.plan-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.plan-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.plan-card__title-row h3 {
+  margin: 0;
+}
+
+/* 整份计划折叠（REQ-037）：图标默认朝下（展开态），折叠后转 180 度
+   指向上——和 REQ-036 删掉的"关键事件列表单独展开/收起"用的是同一套
+   视觉语言（图标转向），但这次控制的是整张卡片（进度条+关键事件列表+
+   "当前待完成"提示），不是列表本身。 */
+.plan-card__collapse-icon {
+  transition: transform 0.15s ease;
+}
+
+.plan-card__collapse-icon--collapsed {
+  transform: rotate(-90deg);
+}
+
+.plan-key-event-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 三种状态：已完成（正常亮度+对勾）/ 当前解锁（强调色左边框，是"接下来
+   该做这个"的视觉提示）/ 还锁着（变淡，用户明确要求严格顺序，锁着的
+   关键事件现在还不能添加到时间轴、也不能标记完成）。 */
+.plan-key-event {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid transparent;
+  font-size: 13px;
+}
+
+.plan-key-event--active {
+  border-left-color: var(--accent-strong);
+  background: var(--bg-tertiary);
+}
+
+.plan-key-event--locked {
+  opacity: 0.45;
+}
+
+.plan-key-event--done .plan-key-event__title {
+  color: var(--text-muted);
+}
+
+.plan-key-event__icon {
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+.plan-key-event__icon--placeholder {
+  display: inline-block;
+  width: 16px;
+}
+
+.plan-key-event__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-key-event__hours {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* 在已有计划末尾追加关键事件的输入行（REQ-054）：紧跟在
+   .plan-key-event-list 后面，和列表项同一套横向排布节奏，但用虚线
+   顶部分隔线，视觉上标记"这里开始是新增，不是已有列表的一部分"。 */
+.plan-key-event-row--add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-color);
+}
+

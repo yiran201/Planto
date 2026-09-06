@@ -1,0 +1,245 @@
+.app-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 自定义背景图片（REQ-011）：固定铺满视口、垫在 .app-shell 后面的独立
+   图层，只有它自己的 opacity 会变，不影响正文——侧边栏/卡片这些不透明
+   背景色的元素照样清晰可读，图片只在它们之间的空隙露出来，效果类似
+   "桌面壁纸"。没设置图片时 App.vue 会把这个元素 display:none。 */
+.app-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px;
+  overflow-y: auto;
+}
+
+/* 汉堡菜单按钮 + 遮罩层（REQ-027，响应式适配）：默认（宽屏）隐藏，只在
+   下面 900px 断点的媒体查询里显示——宽屏侧边栏本来就一直展开，这两个
+   元素在 DOM 里始终存在（遮罩层由 App.vue 用 v-if 控制，按钮本身没有
+   v-if，靠 CSS display:none 隐藏），不需要用 JS 侦测视口宽度。 */
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-elevation-2);
+  cursor: pointer;
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 14;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* 悬浮工具栏（REQ-077 先只有一个"右上角透明按钮"，REQ-078 挪到右下角、
+   改成可以放多个按钮的工具栏容器，REQ-079 改横排）：固定右下角，
+   横向排列，窄屏/宽屏下都常驻显示——不像 .sidebar-toggle 那样只在窄屏
+   出现，跟屏幕宽度无关。用 `right`（不是 `left`）定位，容器随内容
+   增减宽度时右边缘始终贴着 12px 不动，展开/收起功能按钮时最右侧的
+   开关按钮本身不会跟着挪位置。 */
+.floating-toolbar {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 20;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.floating-toolbar__btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-elevation-2);
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.floating-toolbar__btn:hover {
+  color: var(--text-primary);
+}
+
+.floating-toolbar__btn--active {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+
+/* 开启透明化后整个 .app-shell（侧边栏+主内容区）降低不透明度，让
+   .app-background 那张背景图透出来——直接调整体 opacity 而不是逐个
+   卡片换半透明背景色，是因为后者要给每个组件的卡片背景重新适配透明
+   通道，改动面太大；代价是文字对比度也会跟着变淡，用户不想要了随时
+   点按钮关掉。 */
+.app-shell--transparent {
+  opacity: 0.82;
+  transition: opacity 0.2s ease;
+}
+
+/* 断点选 900px：覆盖平板竖屏（~768px）到小屏笔记本（~1024px）这个用户
+   明确要求适配的区间——低于这个宽度侧边栏常驻展开会挤占大半个视口给
+   周视图/月视图这类本身就需要不少横向空间的日历网格，所以改成默认收起
+   的抽屉；高于 900px（含普通笔记本/桌面）维持原来的常驻侧边栏，不改变
+   现有视觉。没有额外做 <480px 的手机专属布局（未in scope，见
+   docs/REQUESTS.md REQ-027）。 */
+@media (max-width: 900px) {
+  .sidebar-toggle {
+    display: flex;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 15;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow-elevation-2);
+  }
+
+  .sidebar--open {
+    transform: translateX(0);
+  }
+
+  /* 顶部留出汉堡按钮（fixed，40px 高 + 12px 上边距）的空间，避免它盖住
+     每个视图自己的标题/操作按钮行。 */
+  .main-content {
+    padding: 64px 16px 32px;
+  }
+}
+
+/* display:flex + flex-direction:column 是为了让 .day-view/.week-board
+   这类需要"铺满剩余可视高度"的视图根节点能通过 flex:1 撑满；其余视图
+   （设置/活动库/月历/同步）不设 flex:1，仍然是正常的内容高度 + 这里的
+   overflow-y:auto 滚动，互不影响。 */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 24px 32px 48px;
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.sidebar__logo {
+  font-size: 22px;
+}
+
+/* 导航本身用 Naive UI 的 <n-menu>（见 SidebarNav.vue），这里只需要给它
+   一点上边距；.nav-item__icon 是传给 n-menu option 的图标渲染函数用的
+   class。语言切换挪到"设置"页里了（见 SettingsPanel.vue 里的
+   LanguageSwitcher 用法），侧边栏这里不再需要 .locale-select。 */
+.sidebar .n-menu {
+  margin-top: 16px;
+}
+
+.nav-item__icon {
+  font-size: 16px;
+}
+
+/* 语言切换：缩写按钮组，内嵌在设置页的分区里（非固定定位）。 */
+.language-switcher {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 3px;
+  box-shadow: var(--shadow-card);
+}
+
+.language-switcher__btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.language-switcher__btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.language-switcher__btn--active {
+  background: var(--accent-strong);
+  color: var(--accent-contrast);
+}
+
+.view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.view-header__left, .view-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 视图切换的淡入淡出过渡，减少切 tab 时"啪"一下硬切的生硬感。 */
+.view-fade-enter-active,
+.view-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.view-fade-enter-from,
+.view-fade-leave-to {
+  opacity: 0;
+}

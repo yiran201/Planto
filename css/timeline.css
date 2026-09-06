@@ -1,0 +1,326 @@
+/* .day-view 撑满 .main-content 分配给它的整段可视高度（见
+   css/layout.css 的 .main-content flex 设置），.view-header 保持自身
+   内容高度，.day-timeline 用 flex:1 吃掉剩下的高度——这样"日历时间轴的
+   长度铺满页面"不需要一个写死的像素高度，浏览器窗口多高，时间轴就有
+   多高，小时格线/事件块的位置全部改用百分比（相对 24 小时）而不是
+   "每小时多少像素"的 JS 常量，见 DayTimeline.vue / WeekBoard.vue。 */
+.day-view {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.day-timeline {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--shadow-elevation-1);
+}
+
+.day-timeline__hours {
+  width: 56px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+}
+
+.hour-label {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  box-sizing: border-box;
+}
+
+.day-timeline__grid {
+  position: relative;
+  flex: 1;
+  height: 100%;
+}
+
+.grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--border-color);
+  opacity: 0.5;
+}
+
+.timeline-block {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 2px 7px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  cursor: grab;
+}
+
+.timeline-block--locked {
+  cursor: default;
+  background: rgba(248, 113, 113, 0.08);
+  opacity: 0.85;
+}
+
+.timeline-block--skipped {
+  opacity: 0.5;
+}
+
+.timeline-block--skipped .timeline-block__title {
+  text-decoration: line-through;
+}
+
+.timeline-block.dragging {
+  opacity: 0.4;
+}
+
+/* 字重/字号比页面正文再小一档、再轻一档——块本身很紧凑，用正文级的
+   700/13px 显得又重又占地方（用户反馈"字体颜色太深 大小也有点大"）。
+   颜色改用 --text-secondary 而不是 --text-primary，视觉上没那么"压"。
+   周视图直接把标题文字放进这个 class（没有时间行）；日视图套了下面的
+   .timeline-block__title-row 做"标题+时间同一行"。 */
+.timeline-block__title {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 日视图专用：标题和时间段放同一行（时间跟在标题后面），比"时间单独
+   占一行、标题再占一行"矮一半，短时长的块也至少能露出这一行文字，不会
+   被裁没——原来两行的结构在时间段很短（比如 15 分钟）时，块的可用高度
+   连一行字都放不下，标题整个被 overflow:hidden 裁掉，是用户反馈"时间段
+   过小 字体会看不到"的根本原因。右侧留出的 padding 是给跳过/删除这两个
+   悬浮按钮（`.timeline-block__skip`/`.timeline-block__delete`，绝对定位
+   在块的右上角）让位，不然标题+时间这一行的文字会写到按钮底下去，
+   用户反馈过"时间和最后面的跳过按钮重叠了"。类型文案（工作/运动/体验
+   这类）不再单独显示——块左边框的颜色（BLOCK_TYPE_COLORS）已经能区分
+   类型，用户反馈"这类分类有颜色就足够了 不要标注"，索性去掉，省下的
+   空间也有助于矮块显示。 */
+/* 每个（非 Google 来源的）块固定有两个悬浮按钮（跳过/删除），右侧
+   padding 给它们留位。REQ-019 时曾经因为多了一个"标记完成"按钮短暂
+   加宽到 60px，REQ-020 那个按钮整个删掉了（不再需要手动点击完成，
+   见 domain/rewards.js 顶部"一天延迟结算"的说明），改回两个按钮的
+   宽度。 */
+.timeline-block__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 1px;
+  padding-right: 42px;
+}
+
+.timeline-block__title-row .timeline-block__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.timeline-block__time {
+  flex-shrink: 0;
+  font-size: 9px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.timeline-block__locked-tag {
+  font-size: 10px;
+  color: var(--danger);
+  margin-top: 2px;
+}
+
+.day-timeline__grid {
+  cursor: pointer;
+}
+
+.timeline-block__delete {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 2px 4px;
+}
+
+.timeline-block__delete:hover {
+  color: var(--danger);
+}
+
+.timeline-block__skip {
+  position: absolute;
+  top: 2px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 2px 4px;
+  opacity: 0.55;
+}
+
+.timeline-block__skip:hover,
+.timeline-block__skip--active {
+  opacity: 1;
+}
+
+.timeline-block__resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.day-timeline__empty {
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* "现在"横线，日视图和周视图共用（见 src/composables/useNow.js）。 */
+.now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--danger);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.now-line::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+/* 周视图：和日视图一样，根节点 .week-board 用 flex 铺满 .main-content
+   分配的可视高度，.week-timeline 用 flex:1 吃掉 .view-header 之外的
+   剩余高度；小时格线/事件块位置全部改百分比，见 WeekBoard.vue。 */
+.week-board {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.week-timeline {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-elevation-1);
+}
+
+.week-timeline__hours {
+  width: 48px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+}
+
+.week-timeline__corner {
+  height: 50px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.week-timeline__days {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+.week-timeline__day {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+}
+
+.week-timeline__day:last-child {
+  border-right: none;
+}
+
+.week-timeline__day-header {
+  height: 50px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border-color);
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.week-timeline__day-header:hover {
+  background: var(--bg-hover);
+}
+
+.week-timeline__day--today .week-column__date {
+  color: var(--accent-strong);
+}
+
+.week-timeline__day-grid {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  cursor: pointer;
+}
+
+/* 周视图窄屏适配（REQ-027）：7 列并排在窄屏下会被压得每列没几十像素宽，
+   事件块标题基本看不清；用户明确选择"横向滚动、保留 7 列"而不是压缩
+   列宽或改单日视图，所以给每列设一个可读的最小宽度，超出视口的部分靠
+   .week-timeline 整体横向滚动查看，不改变"一周 7 天并排"的信息结构。
+   小时刻度列（.week-timeline__hours）用 sticky 固定在滚动容器左侧，
+   不然横向滚动到后面几天时刻度也跟着滚走，没法对照时间。 */
+@media (max-width: 900px) {
+  .week-timeline {
+    overflow-x: auto;
+  }
+
+  .week-timeline__hours {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: var(--bg-secondary);
+  }
+
+  .week-timeline__days {
+    min-width: 630px;
+  }
+
+  .week-timeline__day {
+    min-width: 90px;
+  }
+}

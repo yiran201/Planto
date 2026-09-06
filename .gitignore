@@ -1,0 +1,37 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+.vite/
+data/
+
+# 本地数据库/用户数据（OPFS 数据是浏览器私有存储，理论上不会出现在
+# 项目目录里；这里预防性排除，防止本地调试/导出时产生的文件被误提交）
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-journal
+
+# REQ-043「导出全部数据」下载的备份文件——包含用户真实数据，同样不应该
+# 被提交（和上面 .sqlite3 是同一条"数据库数据不要上传"的原则，见
+# docs/CHANGELOG.md REQ-040 条目）。文件名固定前缀
+# `lifespark-backup-<日期>.json`（见 SettingsPanel.vue 的
+# `handleExportData()`），用户如果把导出的文件放进项目目录里做备份，
+# 这条规则会自动排除。
+lifespark-backup-*.json
+
+# 环境变量与密钥
+.env
+.env.*
+!.env.example
+
+# 编辑器/系统
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# 日志
+npm-debug.log*

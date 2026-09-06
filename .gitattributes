@@ -1,0 +1,13 @@
+# REQ-056：项目同时提供 Windows 版（start-planto.bat，GBK 编码 +
+# CRLF，cmd.exe 要求；REQ-084 项目改名前叫 start-lifespark.bat）和
+# Linux/macOS 版（start-planto.sh，UTF-8 + LF，shebang 要求）两份启动
+# 脚本。这两份脚本对换行符的要求互相冲突，而 Windows 上常见的
+# core.autocrlf=true 会在 checkout/commit 时自动转换换行符——如果不
+# 锁定，某个 Windows 贡献者哪怕只是碰一下 start-planto.sh 再提交，就
+# 可能把它的 LF 悄悄转成 CRLF，导致 Linux/macOS 上执行报
+# "bad interpreter" 找不到 /bin/bash。这里显式锁定，不依赖任何人本地的
+# core.autocrlf 设置。
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.sh text eol=lf

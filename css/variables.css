@@ -1,0 +1,62 @@
+/* 设计 token 参考 Google 自家产品（Calendar/Gmail/Material Design 3）的
+   配色、圆角、阴影语言：Google 蓝作为强调色、用阴影分层代替硬边框、
+   Roboto 作为主字体。默认（未设置 data-theme 属性时）为深色主题，
+   背景保持纯黑（用户明确要求过，见 docs/CHANGELOG.md REQ-002），但
+   卡片/侧栏等更高层级的深色背景改用 Google 深色主题实际用的那种偏蓝
+   灰黑色调（如 #202124），而不是纯灰阶，视觉上更接近 Google 的暗色界面。
+   src/App.vue 每次渲染都会把 document.documentElement.dataset.theme
+   设为 state.settings.theme（'dark' | 'light'），下面的
+   :root[data-theme="light"] 覆盖块提供浅色主题。 */
+:root {
+  --bg-primary: #000000;
+  --bg-secondary: #17181a;
+  --bg-tertiary: #202124;
+  --bg-hover: #292a2d;
+  --border-color: #3c4043;
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0a6;
+  --text-muted: #80868b;
+
+  --accent: #8ab4f8;
+  --accent-strong: #8ab4f8;
+  --accent-contrast: #062e5c;
+  --success: #81c995;
+  --warning: #fdd663;
+  --danger: #f28b82;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
+  /* Material Design 的阴影分层（elevation），比硬边框更能表达"这是一张
+     浮起来的卡片"，用来在深色/浅色主题下都尽量少依赖 1px 边框分隔。 */
+  --shadow-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.55), 0 1px 3px 1px rgba(0, 0, 0, 0.35);
+  --shadow-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.6), 0 4px 12px 2px rgba(0, 0, 0, 0.4);
+  --shadow-card: var(--shadow-elevation-1);
+
+  --font-sans: 'Roboto', 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  --sidebar-width: 248px;
+}
+
+:root[data-theme='light'] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #f1f3f4;
+  --bg-hover: #e8eaed;
+  --border-color: #dadce0;
+  --text-primary: #202124;
+  --text-secondary: #5f6368;
+  --text-muted: #80868b;
+
+  --accent: #1a73e8;
+  --accent-strong: #1a73e8;
+  --accent-contrast: #ffffff;
+  --success: #188038;
+  --warning: #b06000;
+  --danger: #d93025;
+
+  --shadow-elevation-1: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  --shadow-elevation-2: 0 1px 3px rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+  --shadow-card: var(--shadow-elevation-1);
+}
