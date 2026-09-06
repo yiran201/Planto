@@ -19,8 +19,8 @@ Planto/
   LICENSE                        # REQ-061 新增：Apache License 2.0 全文
   package.json / vite.config.js  # Vite 构建配置（REQ-024 新增 COOP/COEP 响应头 + sqlite-wasm 预构建排除；REQ-063 dev/preview 端口固定，strictPort:true；REQ-064 加 host:true 解决只绑定 IPv6 loopback 导致部分环境访问不到的问题；REQ-065 端口从 6000 改 8090，因为 6000 是浏览器内置不安全端口黑名单成员会报 ERR_UNSAFE_PORT；REQ-066 按用户要求改成 6060）
   .gitattributes                 # REQ-056 新增：锁定 *.bat=CRLF / *.sh=LF，不依赖各贡献者本地 core.autocrlf 设置，防止跨平台协作时换行符被悄悄改错
-  start-planto.bat               # 一键启动脚本 Windows 版（REQ-046 新增，REQ-055 修复成 ANSI/GBK 编码；REQ-084 项目改名前叫 start-lifespark.bat）：cd 到自身目录 -> 首次自动 npm install -> npm run dev -- --open；配一个指向它的桌面快捷方式（本机文件，不在仓库里，改名后需要用户自己重新指向新文件名）
-  start-planto.sh                # 一键启动脚本 Linux/macOS 版（REQ-056 新增，start-planto.bat 的对应版本；REQ-084 项目改名前叫 start-lifespark.sh）：逻辑与 .bat 版一致；UTF-8 + LF 编码，需要 `chmod +x` 后用 `./start-planto.sh` 执行
+  start-planto.bat               # 一键启动脚本 Windows 版（REQ-046 新增，~~REQ-055 修复成 ANSI/GBK 编码~~ **REQ-085 改成纯 ASCII 英文内容，不再依赖任何特定系统代码页，见 docs/KNOWLEDGE.md**；REQ-084 项目改名前叫 start-lifespark.bat）：cd 到自身目录 -> 首次自动 npm install -> npm run dev -- --open；配一个指向它的桌面快捷方式（本机文件，不在仓库里，改名后需要用户自己重新指向新文件名）
+  start-planto.sh                # 一键启动脚本 Linux/macOS 版（REQ-056 新增，start-planto.bat 的对应版本；REQ-084 项目改名前叫 start-lifespark.sh；REQ-085 文案同步改成英文，保持两份脚本一致）：逻辑与 .bat 版一致；UTF-8 + LF 编码，需要 `chmod +x` 后用 `./start-planto.sh` 执行
   index.html                     # Vite 入口页面（挂载点 + gapi 外部脚本 + REQ-024 加载占位，REQ-030 改成带淡出动效的独立遮罩层，REQ-045 改成"清新治愈"风格动效；REQ-072 移除 GIS 脚本标签，Google 登录改手写整页跳转不再需要它）
   css/
     variables.css                # 设计 token（深色主题色板/间距/圆角，含明暗两套）

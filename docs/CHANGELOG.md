@@ -5,6 +5,47 @@
 
 ---
 
+## 2026-09-06（第六次追加）
+
+**REQ-086：浏览器标签页标题去掉中文副标题，只保留 Planto；新增 🌱 favicon**
+
+用户反馈标题栏"后面加了一段中文"，希望只显示"Planto"和图标。
+`<title>` 简化成只有 `Planto`；项目之前完全没有配置 favicon，新增的
+图标直接复用侧边栏品牌同一个 🌱 emoji，用内联 SVG + `data:` URI 实现，
+不需要额外的图片文件。
+
+**验证**（REQ-086）：手工检查 `index.html` 的 `<head>` 结构完整、
+`<link>` 属性正确闭合。真实浏览器标签页显示效果需要用户本地确认。
+
+---
+
+## 2026-09-06（第五次追加）
+
+**REQ-085：start-planto.bat 编码问题复现，改用纯英文内容彻底避开 Windows 批处理文件的代码页坑**
+
+用户反馈双击 `start-planto.bat` 报乱码错误——跟 `docs/KNOWLEDGE.md`
+记录过的"中文 Windows .bat 脚本必须避开 UTF-8"是同一类问题。REQ-055
+当时修成 GBK 编码，但这次复现说明"存成 GBK"不是一劳永逸的：文件很
+可能在改名过程中被某个编辑器（Cursor）按默认的 UTF-8 重新保存，悄悄
+把编码改回去了，这个风险没有源头性的防护手段。
+
+`chcp` 强制指定代码页这条路 `docs/KNOWLEDGE.md` 已经记录过实测无效。
+用户明确要求"不要用 GBK，脚本用英文注释"——把 `start-planto.bat`/
+`start-planto.sh` 里所有中文注释和 `echo`/`title` 文案全部翻译成
+英文，纯 ASCII 字节在任何代码页下都是同一个字节序列，不管之后被什么
+工具用什么编码重新保存都不会再出问题，从根上让这类 bug 不可能复现。
+`.gitattributes`/`docs/MODULES.md`/`docs/KNOWLEDGE.md` 里提到 GBK 的
+地方同步标注更新。
+
+**验证**（REQ-085）：`file`/`xxd` 核对新文件是纯 ASCII，不存在任何
+非 ASCII 字节。用 `Start-Process` 实际跑了改写后的脚本，确认执行到
+`npm run dev` 这一步没有复现编码错误（该次测试里 `npm` 报
+"not recognized" 确认是测试方法本身环境变量精简导致，不是脚本问题，
+正常会话里 `where.exe npm` 能正确找到）。真实 Windows 双击执行效果
+需要用户本地确认。
+
+---
+
 ## 2026-09-06（第四次追加）
 
 **REQ-084：项目改名为 Planto（寓意"计划落地生根、按部就班地长成"），项目文件夹同步改名**

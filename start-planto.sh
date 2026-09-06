@@ -1,23 +1,32 @@
 #!/usr/bin/env bash
-# 一键启动脚本（REQ-056，start-lifespark.bat 的 Linux/macOS 对应版本；
-# REQ-084 项目改名，文件同步改名为 start-planto.sh）：
-# cd 到脚本自身所在目录 -> 首次运行自动 npm install -> 启动 Vite 开发
-# 服务器并用 --open 让浏览器自动打开。REQ-063 起端口在 vite.config.js
-# 里固定成 6060（strictPort:true，Google OAuth 授权来源要求端口不能
-# 漂移），端口被占用时 `npm run dev` 会直接报错退出，不会像以前那样
-# 静默换成 5174 等其它端口。首次使用前需要 `chmod +x
-# start-planto.sh` 加执行权限（git 是否保留这个权限位取决于提交时
-# 的文件模式，克隆下来发现不能直接执行是正常情况，见 README）。
+# One-click startup script (REQ-056, the Linux/macOS counterpart of
+# start-planto.bat; REQ-084 renamed from start-lifespark.sh when the
+# project was renamed to Planto; REQ-085 comments/messages translated to
+# English to match start-planto.bat, which switched away from Chinese
+# text entirely to sidestep a Windows cmd.exe encoding pitfall - this
+# script was never affected by that bug, translated purely for
+# consistency between the two scripts):
+# cd into the script's own directory -> auto npm install on first run ->
+# start the Vite dev server with --open so the browser opens
+# automatically. Since REQ-063 the port is fixed to 6060 in
+# vite.config.js (strictPort:true - Google OAuth's authorized origin
+# must match the port exactly), so `npm run dev` fails immediately if
+# the port is already taken instead of silently switching to another
+# port like 5174. Before first use, run `chmod +x start-planto.sh` to
+# make it executable (whether git preserves this permission bit depends
+# on the file mode at commit time - it being non-executable right after
+# a fresh clone is expected, see README).
 set -euo pipefail
 
-# 用 BASH_SOURCE 而不是 $0，双击/软链接/被其它脚本 source 时也能正确
-# 定位到脚本真实所在目录，跟 .bat 版本里的 "%~dp0" 是同一个目的。
+# Use BASH_SOURCE instead of $0 so this still resolves to the script's
+# real location when double-clicked, symlinked, or sourced from another
+# script - same purpose as "%~dp0" in the .bat version.
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ ! -d "node_modules" ]; then
-  echo "首次运行，正在安装依赖，请稍候..."
+  echo "First run detected, installing dependencies, please wait..."
   if ! npm install; then
-    echo "依赖安装失败，请检查上面的报错信息。"
+    echo "Dependency installation failed, see the error above."
     exit 1
   fi
 fi
@@ -25,4 +34,4 @@ fi
 npm run dev -- --open
 
 echo
-echo "开发服务器已停止。"
+echo "Dev server stopped."

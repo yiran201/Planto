@@ -5053,3 +5053,94 @@ PowerShell `-Encoding Default` 读回校验过是合法的 GBK 双字节编码
 Windows 双击启动脚本、Google 日历同步事件标题前缀的实际效果需要用户
 本地验证；GitHub 远程仓库改名和本地 `git remote set-url` 需要用户自己
 决定是否要做、如果做的话手动执行（不是这次改动自动完成的部分）。
+
+---
+
+## [REQ-085] start-planto.bat 编码问题复现，改用纯英文内容彻底避开 Windows 批处理文件的代码页坑
+
+状态：completed
+模块：start-planto.bat, start-planto.sh, .gitattributes, docs/MODULES.md,
+docs/KNOWLEDGE.md
+
+描述：
+用户反馈双击 `start-planto.bat` 报错，贴出的报错原文是乱码
+（`'谌ɡ丛匆蠖丝诓荒?REM' 不是内部或外部命令`、`'形暮?UTF-8' 不是内部
+或外部命令`）——这是 `docs/KNOWLEDGE.md`"中文 Windows 上 .bat 脚本
+必须避开 UTF-8（不带 BOM）编码"这条知识记录过的同一类问题：`cmd.exe`
+按系统代码页逐字节解析 `.bat` 文件，如果文件实际编码和这个代码页对不
+上，多字节中文字符的字节配对会错位，偶然拼出 ASCII 分隔符，导致脚本
+从中文注释/提示语"内部"被截断执行。REQ-055 当时的修复是把文件另存成
+ANSI/GBK 编码，这次复现说明"存成 GBK"不是一劳永逸的——文件很可能在
+后续被某个编辑器（比如这次改名过程中打开过这个文件的 Cursor）按默认
+的 UTF-8 重新保存，悄悄把编码改回去了，而这个风险没有办法从源头杜绝
+（没有一种"锁定编码"的机制能防止任何编辑器未来再次误存）。
+
+排查方向上，最初考虑在脚本第一行加 `chcp` 强制指定代码页，但
+`docs/KNOWLEDGE.md` 里已经记录过"这条路实测无效"（`cmd.exe` 解析批
+处理文件不是按"改完代码页立刻对后续行生效"执行的）。用户明确要求
+"不要使用 GBK，可以的话这些脚本使用英文注释"——这是更彻底的解法：把
+`start-planto.bat`/`start-planto.sh` 里所有中文注释和运行时提示文案
+（`echo`/`title`）全部翻译成英文，纯 ASCII 字节在任何代码页下都是同一
+个字节序列，不管这个文件之后被什么工具用什么编码重新保存、不管运行
+它的机器系统代码页是什么，都不可能再触发这类字节错位——从根上让这个
+问题不可能复现，而不是每次编码被意外改回去了再修一次。`.bat` 文件
+不再需要用 PowerShell `-Encoding Default` 这种特殊方式写入维护，普通
+编辑器/工具直接编辑保存即可，维护成本也降低了。
+
+配套更新：`.gitattributes`/`docs/MODULES.md` 里提到"GBK 编码"的地方
+标注成已废弃，改成"纯 ASCII 英文内容"；`docs/KNOWLEDGE.md` 对应知识
+条目补充说明——GBK 双字节配对错位这条技术原理本身仍然是普适事实，但
+"必须用 GBK"这个具体应对方式已经不是本项目现在的做法，只在真的需要
+在批处理脚本里保留中文文案时才需要考虑，本项目现在的选择是从根源上
+不在这两个启动脚本里放任何非 ASCII 文案。
+
+验收：
+- Windows 下双击 `start-planto.bat`，不管用什么编辑器打开/保存过这个
+  文件，都不会再出现"不是内部或外部命令"这类乱码报错
+- 脚本运行效果不变：首次运行自动 `npm install`，然后启动开发服务器并
+  用 `--open` 打开浏览器
+- `start-planto.sh` 的提示文案改成英文后，Linux/macOS 上的功能行为
+  不变
+
+验证：
+按 AGENTS.md P2-2，未代为执行 `npm run dev`（但确认了 `npm run dev`
+本身在这个项目目录下能正常启动，是这次会话里改名验证时已经测过的）。
+`file`/`xxd` 核对了新的 `start-planto.bat` 字节内容确认是纯 ASCII
+（"ASCII text"，不再是"ISO-8859 text"意味的双字节 GBK），不存在任何
+非 ASCII 字节，不可能再触发代码页错位问题。用 `Start-Process` 实际
+执行了改写后的 `start-planto.bat`（用临时文件重定向 stdout/stderr），
+确认脚本本身逐行正确执行到了 `npm run dev` 这一步，没有复现任何"不是
+内部或外部命令"的错误；该次测试里 `npm` 本身报"not recognized"是
+`Start-Process` 这个测试方法本身继承的是精简环境变量、没有用户交互式
+会话的 PATH（`where.exe npm` 在正常 PowerShell 会话里能正确找到
+`npm.cmd`），确认是测试方法的局限，不是脚本文件本身的问题。真实
+Windows 桌面环境下双击执行的最终效果需要用户本地确认。
+
+---
+
+## [REQ-086] 浏览器标签页标题去掉中文副标题，只保留 Planto；新增 🌱 favicon
+
+状态：completed
+模块：index.html
+
+描述：
+用户反馈"浏览器标题的部分就显示 Planto 和图标就行吧，现在后面加了
+一段中文"——`<title>` 从 `Planto · 年度生活规划与智能行程调度` 简化成
+只有 `Planto`。用户确认还想要一个图标：项目此前完全没有配置
+favicon（`<head>` 里没有任何 `rel="icon"`，浏览器标签页一直显示默认
+空白图标）。新增图标直接复用侧边栏品牌同一个 🌱 emoji（见
+`SidebarNav.vue`），用一个只画这一个字符的内联 SVG 通过 `data:` URI
+嵌进 `<link rel="icon">`，不需要额外生成/维护一个 `.ico`/`.png`
+文件，也不占用一次额外的网络请求。
+
+验收：
+- 浏览器标签页标题只显示"Planto"，不再有中文副标题
+- 浏览器标签页图标显示 🌱
+
+验证：
+按 AGENTS.md P2-2，未代为执行 `npm run dev`（`data:` URI favicon 的
+实际渲染效果依赖真实浏览器，无法在当前环境截图确认）。手工检查
+`index.html` 改动前后 `<head>` 结构完整，`<link>` 标签属性配对正确
+闭合，emoji favicon 是这个项目里已经验证过可行的技术（内联 SVG +
+`data:` URI 是浏览器广泛支持的标准做法，不依赖构建工具处理）。真实
+浏览器标签页的显示效果需要用户本地确认。
