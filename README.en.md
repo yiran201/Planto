@@ -14,6 +14,8 @@ time, which you redeem against your own custom reward list. It swaps "a long to-
 list + three days of motivation" for "a loose framework + instant feedback" — built
 for people who don't want to be boxed in by rigid plans but still need a nudge.
 
+
+
 ## ✨ Features
 
 - 🗓️ **Calendar** — day / week / month / year views, drag-and-drop, recurring events, automatic side-by-side layout for overlapping events
@@ -24,6 +26,8 @@ for people who don't want to be boxed in by rigid plans but still need a nudge.
 - 🔗 **Google Calendar sync** (optional): read busy slots, push generated plans back to your calendar
 - 🌍 **Chinese / English / Japanese**
 
+
+
 ## 🔒 Data & Privacy
 
 - Local-first: real data lives in a SQLite file inside your browser's OPFS storage — no account, no backend
@@ -31,26 +35,23 @@ for people who don't want to be boxed in by rigid plans but still need a nudge.
 - Clearing browser data wipes your local records — export a backup first; moving to a new device requires a manual import
 - The only thing that touches the network is the optional Google Calendar sync — leave it unconfigured and no requests are made at all
 
+
+
 ## 📸 Screenshots
 
-**Calendar**: plan, edit, or cancel scheduled and recurring events anytime — your weekly
-layout is clear at a glance.
+**Calendar**: an hour-by-hour weekly layout. Set daily routines (morning routine, commute, workout) as recurring events once and they keep showing up on their own — no need to re-add them every week. The sidebar always shows your year-progress bar, and both the background image and theme accent are customizable.
 
 ![Calendar page](img/image-20260907163058452.png)
 
-**Plans**: create and adjust plans anytime; a plan can hold any number of key events, and
-when scheduling on the calendar you can pick the matching event directly from a plan.
+**Plans**: a plan holds any number of key events that unlock one at a time, in order, with an "N / M done" progress readout right on the page. Key events can be added, edited, or removed anytime, and when creating a calendar event you can pull one in directly from a plan instead of switching back and forth to check.
 
 ![Plans page](img/image-20260907163143697.png)
 
-**Rewards**: completed time settles into points on weekdays and weekends separately —
-redeem them against a reward list you define, turning "spend to reward yourself" into
-something manageable.
+**Rewards**: completed time blocks settle into points automatically (weekday/weekend rates set separately in Settings). Build your own wish list — anything from sneakers to a trip — and see exactly how many points each item still needs; redeem on the spot once you have enough, turning "what to treat yourself with" into something you can actually track.
 
 ![Rewards page](img/image-20260907163201268.png)
 
-**Settings**: switch the display language and region (China / US / Japan supported for
-both), adjust the point growth ratio, or set a background image you like.
+**Settings**: switch between Chinese / English / Japanese with one click; region only affects which public holidays show on the calendar (it doesn't touch scheduling logic); point rates, font, accent color, and background image (local file upload supported) all live on this one page.
 
 ![Settings page](img/image-20260907163405936.png)
 
@@ -61,10 +62,14 @@ still recommended.
 
 The project is in its first release round — feel free to DM me with any issues you run into.
 
+
+
 ## 🛠️ Tech Stack
 
 [Vue 3](https://vuejs.org) + [Vite](https://vitejs.dev) · [Naive UI](https://www.naiveui.com) ·
 [vue-i18n](https://vue-i18n.intlify.dev) · [sqlite-wasm](https://github.com/sqlite/sqlite-wasm) (SQLite in the browser via OPFS, no backend)
+
+
 
 ## 🚀 Quick Start
 
@@ -80,16 +85,9 @@ On Windows, double-click [`start-planto.bat`](start-planto.bat). On macOS / Linu
 `chmod +x start-planto.sh && ./start-planto.sh`. Both install dependencies on first run
 and then start the dev server automatically.
 
-> If you deploy to your own static host, you'll need to add the COOP/COEP/CORP response
-> headers (required by the OPFS-backed database) — see [`vite.config.js`](vite.config.js).
-> The [Releases](../../releases) page has a pre-built `dist/` bundle plus a zero-dependency
-> [`serve-dist.cjs`](serve-dist.cjs) (already sends these headers) — download, extract, and
-> `node serve-dist.cjs` just works, no dependencies or build step needed. The repo also ships
-> a GitHub Pages workflow (`.github/workflows/deploy-pages.yml`) — plain static hosting can't
-> set custom headers, so it uses a service worker shim (`coi-serviceworker.js`) to add them
-> client-side instead. Set Settings → Pages source to "GitHub Actions" once, then every push
-> to `master` deploys automatically. Config examples for self-hosting on Nginx/Apache/Tomcat/
-> Node are in [`DEPLOYMENT.md`](DEPLOYMENT.md) (currently Chinese only).
+> If you deploy to your own static host, you'll need to add the COOP/COEP/CORP response headers (required by the OPFS-backed database) — see [`vite.config.js`](vite.config.js). The [Releases](../../releases) page has a pre-built `dist/` bundle plus a zero-dependency [`serve-dist.cjs`](serve-dist.cjs) (already sends these headers) — download, extract, and `node serve-dist.cjs` just works, no dependencies or build step needed. The repo also ships a GitHub Pages workflow (`.github/workflows/deploy-pages.yml`) — plain static hosting can't set custom headers, so it uses a service worker shim (`coi-serviceworker.js`) to add them client-side instead. Set Settings → Pages source to "GitHub Actions" once, then every push to `master` deploys automatically. Config examples for self-hosting on Nginx/Apache/Tomcat/Node are in [`DEPLOYMENT.md`](DEPLOYMENT.md) (currently Chinese only).
+
+
 
 ## 🔗 Google Calendar Integration (optional)
 
@@ -100,15 +98,19 @@ and then start the dev server automatically.
 The in-app panel walks through the same steps with clickable links and one-click copy, so you
 never have to leave the app to read docs.
 
+
+
 ## 📖 Documentation
 
-Module map: [`docs/MODULES.md`](docs/MODULES.md). Development rules, task log, and change
-history: [`docs/AGENTS.md`](docs/AGENTS.md) / [`docs/REQUESTS.md`](docs/REQUESTS.md) /
-[`docs/CHANGELOG.md`](docs/CHANGELOG.md) (currently maintained in Chinese).
+Module map: [`docs/MODULES.md`](docs/MODULES.md). Development rules, task log, and change history: [`docs/AGENTS.md`](docs/AGENTS.md) / [`docs/REQUESTS.md`](docs/REQUESTS.md) / [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (currently maintained in Chinese).
+
+
 
 ## 📄 License
 
 [Apache License 2.0](LICENSE)
+
+
 
 ## 🤝 Contributing
 
