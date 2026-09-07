@@ -5449,3 +5449,50 @@ sqlite-wasm/dist/sqlite3.wasm public/assets/sqlite3.wasm` 和对应的
 出问题时也更容易理解，这是刻意的取舍，不是遗漏；如果之后升级这个
 依赖时忘了同步这一步，比较容易观察到的症状还是"数据库不落盘"，届时
 参照这条 REQ 记录的定位方法应该能较快复现同样的排查路径。
+
+---
+
+## [REQ-091] 新增 DEPLOYMENT.md：整理各种部署方式的配置步骤
+
+状态：completed
+模块：DEPLOYMENT.md（新增）, README.md, README.en.md, README.ja.md,
+docs/MODULES.md
+
+描述：
+REQ-089/090 期间用户陆续问了好几个部署相关的问题（GitHub Pages 具体
+怎么操作、`public`/`dist` 是什么关系、能不能用其它工具本地测试、直接
+拿 `dist/` 丢给一个 JS 服务器能不能跑），这些问答分散在对话里，用户
+明确要求"配置的手顺帮我加载到文件里"——把这些内容整理成一份固定的
+参考文档，而不是只存在于聊天记录里。
+
+新增 `DEPLOYMENT.md`（项目根目录，跟 `README.md` 同级，不放进
+`docs/`——`docs/` 是 `AGENTS.md` 治理体系里专门给那五个治理文件用的，
+这份是面向"部署"这个具体操作场景的用户文档，性质不一样）。内容按
+"核心前提"（COOP/COEP/CORP 三个响应头，缺哪个会有什么具体症状）开头，
+再分四种部署方式各给出具体步骤：①本地测试构建产物（`npm run
+preview`/`npm run serve:dist`）；②GitHub Pages（这个项目实际采用的
+线上方式，靠 REQ-089 的 Service Worker 垫片）；③GitHub Release（下载
+到本地自己跑）；④自己的服务器——Nginx/Apache/Tomcat/Node-Express/
+`npx serve` 五种常见服务器分别给了响应头配置示例（Tomcat 那条没有
+现成的内置 Filter 能直接支持这三个非标准头，如实说明了需要自己写几行
+Filter 代码，并留了"需要的话我可以现写"这句话，不假装有一个不存在的
+现成方案）。结尾给了一条"部署后自查清单"（`window.crossOriginIsolated`
+控制台检查 + 新建数据整页刷新验证），方便用户部署完之后自己快速判断
+配没配对，不用每次都回来问。三份 README 的部署说明段落加了指向这份
+文档的链接；`docs/MODULES.md` 目录结构树补了对应条目。
+
+验收：
+- 项目根目录能看到 `DEPLOYMENT.md`，打开能看到四种部署方式的具体步骤
+- 三份 README 的部署提示段落最后有指向 `DEPLOYMENT.md` 的链接
+
+验证：
+纯文档新增，没有可执行代码需要跑语法检查。内容对照本次对话里已经
+验证过的事实核对过：COOP/COEP/CORP 三个头的具体要求和缺失时的具体
+症状（对应 REQ-090 的真实排查结果）、`npm run preview`/`npm run
+serve:dist` 已经带对头（对应 `vite.config.js`/`serve-dist.cjs` 现有
+配置）、GitHub Pages 走 Service Worker 垫片（对应 REQ-089）——这些
+描述都不是新猜测，是复述已经做过并验证过的事实。Nginx/Apache/Tomcat/
+Express/`npx serve` 这几段配置示例本身没有在这次会话里实际搭建对应
+服务器逐一跑通验证（超出这次任务范围，用户没有要求现在就搭一个
+Tomcat/Nginx 来测），是按各自平台公开、标准的响应头配置写法给出的
+参考片段，属于文档性质的示例代码，不是"已验证可用"的断言。

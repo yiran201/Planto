@@ -54,7 +54,8 @@ Windows 双击 [`start-planto.bat`](start-planto.bat)，macOS / Linux 执行
 > 仓库也配了 GitHub Pages 自动部署（`.github/workflows/deploy-pages.yml`）——纯静态
 > 托管没法配自定义响应头，改用一个 Service Worker 垫片（`coi-serviceworker.js`）在
 > 浏览器端补上这几个头，效果和自己配服务器一致；仓库 Settings → Pages 选一次
-> "GitHub Actions"来源后，推送到 master 分支即可自动构建部署。
+> "GitHub Actions"来源后，推送到 master 分支即可自动构建部署。部署到自己的
+> Nginx/Apache/Tomcat/Node 服务器的具体配置示例见 [`DEPLOYMENT.md`](DEPLOYMENT.md)。
 
 ## 🔗 Google Calendar 集成（可选）
 

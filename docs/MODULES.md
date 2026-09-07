@@ -17,6 +17,7 @@ Planto/
   README.en.md                   # REQ-062 新增：英文版，结构与 README.md 一致
   README.ja.md                   # REQ-062 新增：日文版，结构与 README.md 一致
   LICENSE                        # REQ-061 新增：Apache License 2.0 全文
+  DEPLOYMENT.md                  # REQ-091 新增：部署指南——COOP/COEP/CORP 三个响应头的核心前提说明 + 本地测试/GitHub Pages/GitHub Release/自建服务器（Nginx/Apache/Tomcat/Node/npx serve）各自的配置步骤，目前只有中文版
   package.json / vite.config.js  # Vite 构建配置（REQ-024 新增 COOP/COEP 响应头 + sqlite-wasm 预构建排除；REQ-063 dev/preview 端口固定，strictPort:true；REQ-064 加 host:true 解决只绑定 IPv6 loopback 导致部分环境访问不到的问题；REQ-065 端口从 6000 改 8090，因为 6000 是浏览器内置不安全端口黑名单成员会报 ERR_UNSAFE_PORT；REQ-066 按用户要求改成 6060；REQ-090 补上 Cross-Origin-Resource-Policy 响应头，修复 OPFS 异步代理嵌套 worker 被 COEP 拦截导致数据库无法初始化的严重 bug）
   public/                        # REQ-089/090 新增：Vite 原样复制到 dist/ 根目录的静态资源
     coi-serviceworker.js          # REQ-089 新增：GitHub Pages 等纯静态托管的跨源隔离垫片（自己按 https://github.com/gzuidhof/coi-serviceworker 公开原理实现，不是照搬第三方文件），REQ-090 补上 Cross-Origin-Resource-Policy

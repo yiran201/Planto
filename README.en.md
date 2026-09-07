@@ -58,7 +58,8 @@ and then start the dev server automatically.
 > a GitHub Pages workflow (`.github/workflows/deploy-pages.yml`) — plain static hosting can't
 > set custom headers, so it uses a service worker shim (`coi-serviceworker.js`) to add them
 > client-side instead. Set Settings → Pages source to "GitHub Actions" once, then every push
-> to `master` deploys automatically.
+> to `master` deploys automatically. Config examples for self-hosting on Nginx/Apache/Tomcat/
+> Node are in [`DEPLOYMENT.md`](DEPLOYMENT.md) (currently Chinese only).
 
 ## 🔗 Google Calendar Integration (optional)
 

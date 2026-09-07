@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-09-07（第一次追加）
+
+**REQ-091：新增 DEPLOYMENT.md，整理各种部署方式的配置步骤**
+
+REQ-089/090 期间用户陆续问了好几个部署相关的问题，明确要求"把配置的
+手顺记载到文件里"。新增 `DEPLOYMENT.md`（项目根目录，跟 README 同级，
+不放进 `docs/`——那里是治理文件专用的）：开头讲清楚 COOP/COEP/CORP
+三个响应头这个核心前提，再分四种部署方式给具体步骤——本地测试
+（`npm run preview`/`serve:dist`）、GitHub Pages（REQ-089 的 Service
+Worker 垫片）、GitHub Release、自建服务器（Nginx/Apache/Tomcat/
+Express/`npx serve` 各给配置示例）。结尾加了"部署后自查清单"。三份
+README 补了指向这份文档的链接。
+
+**验证**（REQ-091）：纯文档新增。核心的响应头要求/症状描述、
+`npm run preview`/`serve:dist`/GitHub Pages 部分是复述本次会话里
+已经验证过的事实；Nginx/Apache/Tomcat/Express/`npx serve` 的配置
+示例是按各平台标准写法给的参考片段，没有在本次会话里实际搭建对应
+服务器逐一跑通，如实作为文档性质的示例，不是"已验证可用"的断言。
+
+---
+
 ## 2026-09-06（第十次追加）
 
 **REQ-090：修复本地数据库在所有部署场景下完全无法初始化的严重问题**

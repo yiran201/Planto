@@ -60,7 +60,9 @@ Windows では [`start-planto.bat`](start-planto.bat) をダブルクリック�
 > ホスティングではカスタムヘッダーを設定できないため、代わりに Service Worker
 > シム（`coi-serviceworker.js`）でブラウザ側からヘッダーを付与します。リポジトリの
 > Settings → Pages でソースを「GitHub Actions」に設定すれば、`master` への push
-> のたびに自動でビルド・デプロイされます。
+> のたびに自動でビルド・デプロイされます。自前の Nginx/Apache/Tomcat/Node への
+> デプロイ設定例は [`DEPLOYMENT.md`](DEPLOYMENT.md)（現時点では中国語のみ）を
+> 参照してください。
 
 ## 🔗 Google カレンダー連携（任意）
 
