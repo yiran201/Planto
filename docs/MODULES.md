@@ -480,11 +480,25 @@ Worker 线程里跑一份真正的 SQLite，靠 OPFS（Origin Private File Syste
   调用方拿到非 `null` 结果后直接 `store.setState(parsed)`——`setState`
   的 `Object.assign(state, partial)` 对一个带着全部顶层字段的对象做的
   就是整体覆盖，不需要为"导入"这个场景单独在 `store.js` 加新接口。
+- `detectDefaultLocale()`/`detectDefaultRegion(locale)`（REQ-093，
+  新增内部函数，`createDefaultState()` 内部调用）：读
+  `navigator.languages`/`navigator.language` 猜一个合理的默认语言/
+  地区，只在全新安装时生效（老数据走"已有字段不覆盖"的合并逻辑不受
+  影响）。语言按 `zh`/`ja`/`en` 三个语言前缀匹配（忽略地区子标签，
+  `zh-TW` 也命中 `zh`）；地区优先直接读语言标签里的地区子标签（命中
+  `domain/holidays.js` `SUPPORTED_REGIONS` 的 `CN`/`US`/`JP` 三个之一
+  才用），读不到时按语言给一个默认地区（`zh→CN`/`en→US`/`ja→JP`）。
+  两个函数都识别不出来（语言完全不支持，或者没有 `navigator`，比如
+  测试环境）时兜底成 `en`/`US`。
 - `createDefaultState(): AppState` — 生成默认 meta/settings/空活动库等。
-  `settings` 新增 `theme: 'dark' | 'light'`（默认 `'dark'`，REQ-002）；
+  `settings` 新增 `theme: 'dark' | 'light'`（REQ-002 时默认
+  `'dark'`，~~REQ-092 改成默认 `'light'`~~ **应用户要求**，只影响新
+  安装，见文件内该行注释）；
   顶层新增 `recurringEvents: []`（REQ-002，见
   `domain/recurringEvents.js`）。
-  （REQ-011）`settings` 新增 `region`（默认 `'CN'`，见
+  （REQ-011）`settings` 新增 `region`（~~默认 `'CN'`~~ **REQ-093 起
+  跟 `locale` 一起改成跟浏览器系统语言自动判断，只影响新安装，见下方
+  `detectDefaultLocale()`/`detectDefaultRegion()` 条目**，见
   `domain/holidays.js`）和 `appearance`（嵌套对象：
   `fontFamily`/`accentColor`/`backgroundImage`/`backgroundOpacity`，见
   `constants/fontStacks.js` 和 `components/SettingsPanel.vue`）。
@@ -524,8 +538,10 @@ Worker 线程里跑一份真正的 SQLite，靠 OPFS（Origin Private File Syste
   （REQ-019，REQ-022 一度改成默认 2000 起始点数，REQ-023 又改回 0，
   REQ-046 把这个字段整个删除，见下面）`settings` 新增
   `pointsPerHourWeekday`/`pointsPerHourWeekend`（完成一小时平日/周末
-  事件能拿多少点数，默认都是 1000，`SettingsPanel.vue` 可分别调整），
-  取代了 REQ-019 时单一的 `pointsPerHour` 字段，见 `domain/rewards.js`。
+  事件能拿多少点数，~~默认都是 1000~~ **REQ-092 改成默认平日 100、
+  周末 200**（只影响新安装，老数据不受影响），`SettingsPanel.vue` 可
+  分别调整），取代了 REQ-019 时单一的 `pointsPerHour` 字段，见
+  `domain/rewards.js`。
   （~~REQ-028 曾经在这里新增 `meta.pointsResetAt: null`~~，**REQ-046
   已删除**：配对的 `domain/rewards.resetPointsFromMonday` 整个删掉了，
   新安装不再生成这个字段；老数据里如果还带着，走

@@ -4,9 +4,9 @@
 
 # 🌱 Planto
 
-*Where plans take root and grow, one step at a time.*
+*Plant your plans. Let time grow them.*
 
-**An execution tool for people who are bad at sticking to plans.**
+**A calendar-based execution tool for people who are bad at sticking to plans.**
 
 Break a goal into a chain of key events that **must be completed in order** — finish
 one to unlock the next. Every completed time block earns you reward points in real
@@ -30,6 +30,36 @@ for people who don't want to be boxed in by rigid plans but still need a nudge.
 - One-click JSON export / import for backups
 - Clearing browser data wipes your local records — export a backup first; moving to a new device requires a manual import
 - The only thing that touches the network is the optional Google Calendar sync — leave it unconfigured and no requests are made at all
+
+## 📸 Screenshots
+
+**Calendar**: plan, edit, or cancel scheduled and recurring events anytime — your weekly
+layout is clear at a glance.
+
+![Calendar page](img/image-20260907163058452.png)
+
+**Plans**: create and adjust plans anytime; a plan can hold any number of key events, and
+when scheduling on the calendar you can pick the matching event directly from a plan.
+
+![Plans page](img/image-20260907163143697.png)
+
+**Rewards**: completed time settles into points on weekdays and weekends separately —
+redeem them against a reward list you define, turning "spend to reward yourself" into
+something manageable.
+
+![Rewards page](img/image-20260907163201268.png)
+
+**Settings**: switch the display language and region (China / US / Japan supported for
+both), adjust the point growth ratio, or set a background image you like.
+
+![Settings page](img/image-20260907163405936.png)
+
+Try it live: [yiran201.github.io/Planto](https://yiran201.github.io/Planto/) — your data
+stays entirely in your own browser and never touches a server, so there's nothing to leak.
+For heavier day-to-day use, self-hosting locally per [`DEPLOYMENT.md`](DEPLOYMENT.md) is
+still recommended.
+
+The project is in its first release round — feel free to DM me with any issues you run into.
 
 ## 🛠️ Tech Stack
 

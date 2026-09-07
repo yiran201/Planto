@@ -125,9 +125,46 @@ function migrateLegacyActivity(activity) {
 // `utils/i18nLabels.rewardLabel()` 逻辑没变，没有 `seedKey` 就用
 // `title`），只是不会再被这两个函数处理。
 
+// REQ-093：新安装的语言/地区默认值改成"跟随浏览器系统语言"，应用户
+// 要求，而不是一直写死中文/中国大陆。只在真正的全新安装时生效——
+// `fillMissingDefaults()` 走"老数据里已经有这个字段就不覆盖"的浅展开
+// 合并（见文件顶部注释），已经有数据、或者已经手动调整过语言/地区的
+// 用户完全不受影响。浏览器语言识别不出来（比如没有 `navigator` 的
+// 测试环境）时兜底成英文/美国。
+function detectDefaultLocale() {
+  if (typeof navigator === 'undefined') return 'en';
+  const langs = navigator.languages?.length ? navigator.languages : [navigator.language].filter(Boolean);
+  for (const lang of langs) {
+    const primary = lang.toLowerCase().split('-')[0];
+    if (primary === 'zh' || primary === 'ja' || primary === 'en') return primary;
+  }
+  return 'en';
+}
+
+// 地区（`domain/holidays.js` 的 `SUPPORTED_REGIONS`，目前是
+// 'CN'/'US'/'JP' 三个，这两处如果以后要加新地区需要同步改）优先从
+// 浏览器语言标签里的地区子标签直接读（比如 `zh-CN` 里的 `CN`），读不到
+// 或者不在支持列表里时，按上面识别出的语言给一个合理的默认地区——不
+// 追求完美，比如 `en-GB` 用户会拿到 `US` 而不是更精确的地区，用户自己
+// 在设置页可以随时改，这只是一个"猜一个大概率对的起点"。
+function detectDefaultRegion(locale) {
+  const SUPPORTED = ['CN', 'US', 'JP'];
+  const FALLBACK_BY_LOCALE = { zh: 'CN', en: 'US', ja: 'JP' };
+  if (typeof navigator !== 'undefined') {
+    const langs = navigator.languages?.length ? navigator.languages : [navigator.language].filter(Boolean);
+    for (const lang of langs) {
+      const region = lang.toUpperCase().split('-')[1];
+      if (region && SUPPORTED.includes(region)) return region;
+    }
+  }
+  return FALLBACK_BY_LOCALE[locale] || 'US';
+}
+
 export function createDefaultState() {
   const now = new Date();
   const yearStart = new Date(now.getFullYear(), 0, 1).toISOString();
+  const defaultLocale = detectDefaultLocale();
+  const defaultRegion = detectDefaultRegion(defaultLocale);
 
   return {
     // claimedRewardsClearedAt（REQ-033）：`domain/rewards.js` 的
@@ -147,9 +184,12 @@ export function createDefaultState() {
     settings: {
       workHours: { start: 9, end: 18, days: [1, 2, 3, 4, 5] },
       googleClientId: '',
-      theme: 'dark',
-      locale: 'zh',
-      region: 'CN',
+      // REQ-092：默认主题从 'dark' 改成 'light'，应用户要求。
+      theme: 'light',
+      // REQ-093：跟随浏览器系统语言/地区，见上面 detectDefaultLocale()/
+      // detectDefaultRegion() 的注释。
+      locale: defaultLocale,
+      region: defaultRegion,
       // REQ-075：`backgroundOpacity`（背景图透明度滑块）删除——用户反馈
       // "背景图的效果不用设置透明化"，背景图现在始终按原样全不透明
       // 显示（见 App.vue 的 backgroundStyle）。老数据里如果还带着这个
@@ -170,10 +210,11 @@ export function createDefaultState() {
       // 周日，`utils/dateUtils.weekdayIndex` 返回的 5/6）选用对应比率——
       // 这个"周末"判断和 `workHours.days`（自动排程默认工作日）是两个
       // 概念，不共用同一份配置，语义上"周末事件更值钱"是用户自己的个人
-      // 激励尺度，不需要和排程规则绑在一起。默认都给 1000/小时（用户
-      // 描述"1 小时约等于 1000 点的感觉"），用户可以在设置页分别调整。
-      pointsPerHourWeekday: 1000,
-      pointsPerHourWeekend: 1000,
+      // 激励尺度，不需要和排程规则绑在一起。用户可以在设置页分别调整。
+      // REQ-092：默认值从平日/周末都是 1000 改成平日 100、周末 200——
+      // 周末保持"更值钱"这个激励方向不变，只是把默认数字整体调低。
+      pointsPerHourWeekday: 100,
+      pointsPerHourWeekend: 200,
     },
     // 兴趣活动库（REQ-048）新安装是空列表，见上面 migrateLegacyActivity
     // 上方那段注释里的取舍说明；用户自己通过「添加活动」建立第一条。
