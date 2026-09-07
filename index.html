@@ -9,6 +9,42 @@
        不需要额外的 .ico/.png 文件、也不需要经过构建流程处理。 -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>" />
 
+  <!-- 跨源隔离兜底（REQ-089）：本地数据库（OPFS SQLite）需要页面处于
+       "跨源隔离"状态，正常靠服务器发 COOP/COEP 两个响应头达成——
+       vite.config.js 的 dev/preview、serve-dist.cjs 都已经这样做了。
+       GitHub Pages 这类纯静态托管没有配置自定义响应头的能力，直接部署
+       上去会打开页面但数据库初始化失败。这段内联脚本只在页面还没被
+       隔离（`window.crossOriginIsolated` 不是 true）时才生效：注册
+       public/coi-serviceworker.js（构建后在站点根目录），让它在浏览器
+       端给之后的每个请求补上这两个响应头，从而在纯静态托管上也能达成
+       跨源隔离，效果参考 https://github.com/gzuidhof/coi-serviceworker。
+       服务器已经在发这两个头的场景（dev/preview/serve-dist.cjs）里，
+       `crossOriginIsolated` 一开始就是 true，这段代码整体是空操作，
+       不会有任何副作用。Service Worker 只对"注册之后的请求"生效，当前
+       这次打开是在它生效之前发生的，所以注册成功后要刷新一次页面，让
+       这次访问本身也走上带着两个头的请求；`sessionStorage` 打的标记
+       防止在极端情况下（Service Worker 注册成功但因为某些浏览器策略
+       仍然没能达成隔离）反复刷新。 -->
+  <script>
+    (function () {
+      if (window.crossOriginIsolated) return;
+      if (!('serviceWorker' in navigator)) return;
+      if (window.location.protocol === 'file:') return;
+      navigator.serviceWorker.register('coi-serviceworker.js').then(
+        function () {
+          if (!sessionStorage.getItem('planto-coi-reloaded')) {
+            sessionStorage.setItem('planto-coi-reloaded', '1');
+            window.location.reload();
+          }
+        },
+        function () {
+          // 注册失败（比如某些内嵌 WebView 不支持 Service Worker）：
+          // 应用其余部分照常运行，只是数据库这一项功能会不可用。
+        }
+      );
+    })();
+  </script>
+
   <!-- Roboto：Google 系产品的标志性字体，配合 css/variables.css 的
        --font-sans 字体栈使用；没有网络时会自动退回系统无衬线字体。 -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />

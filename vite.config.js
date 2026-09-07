@@ -41,6 +41,14 @@ export default defineConfig({
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
+      // REQ-090：COEP:require-corp 不只要求顶层页面跨源隔离，还要求
+      // 页面加载的**每一个子资源**（尤其是 Worker 脚本——sqlite-wasm 的
+      // OPFS 异步代理是"worker 里再起一个 worker"的嵌套结构）都带
+      // Cross-Origin-Resource-Policy，否则浏览器会直接拦截这次请求
+      // （net::ERR_BLOCKED_BY_RESPONSE），OPFS 初始化会静默失败——这一步
+      // 之前漏加了，`docs/REQUESTS.md` REQ-090 条目里有完整的排查过程和
+      // 实测验证。
+      'Cross-Origin-Resource-Policy': 'same-origin',
     },
   },
   preview: {
@@ -50,6 +58,14 @@ export default defineConfig({
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
+      // REQ-090：COEP:require-corp 不只要求顶层页面跨源隔离，还要求
+      // 页面加载的**每一个子资源**（尤其是 Worker 脚本——sqlite-wasm 的
+      // OPFS 异步代理是"worker 里再起一个 worker"的嵌套结构）都带
+      // Cross-Origin-Resource-Policy，否则浏览器会直接拦截这次请求
+      // （net::ERR_BLOCKED_BY_RESPONSE），OPFS 初始化会静默失败——这一步
+      // 之前漏加了，`docs/REQUESTS.md` REQ-090 条目里有完整的排查过程和
+      // 实测验证。
+      'Cross-Origin-Resource-Policy': 'same-origin',
     },
   },
   optimizeDeps: {

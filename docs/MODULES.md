@@ -17,10 +17,16 @@ Planto/
   README.en.md                   # REQ-062 新增：英文版，结构与 README.md 一致
   README.ja.md                   # REQ-062 新增：日文版，结构与 README.md 一致
   LICENSE                        # REQ-061 新增：Apache License 2.0 全文
-  package.json / vite.config.js  # Vite 构建配置（REQ-024 新增 COOP/COEP 响应头 + sqlite-wasm 预构建排除；REQ-063 dev/preview 端口固定，strictPort:true；REQ-064 加 host:true 解决只绑定 IPv6 loopback 导致部分环境访问不到的问题；REQ-065 端口从 6000 改 8090，因为 6000 是浏览器内置不安全端口黑名单成员会报 ERR_UNSAFE_PORT；REQ-066 按用户要求改成 6060）
+  package.json / vite.config.js  # Vite 构建配置（REQ-024 新增 COOP/COEP 响应头 + sqlite-wasm 预构建排除；REQ-063 dev/preview 端口固定，strictPort:true；REQ-064 加 host:true 解决只绑定 IPv6 loopback 导致部分环境访问不到的问题；REQ-065 端口从 6000 改 8090，因为 6000 是浏览器内置不安全端口黑名单成员会报 ERR_UNSAFE_PORT；REQ-066 按用户要求改成 6060；REQ-090 补上 Cross-Origin-Resource-Policy 响应头，修复 OPFS 异步代理嵌套 worker 被 COEP 拦截导致数据库无法初始化的严重 bug）
+  public/                        # REQ-089/090 新增：Vite 原样复制到 dist/ 根目录的静态资源
+    coi-serviceworker.js          # REQ-089 新增：GitHub Pages 等纯静态托管的跨源隔离垫片（自己按 https://github.com/gzuidhof/coi-serviceworker 公开原理实现，不是照搬第三方文件），REQ-090 补上 Cross-Origin-Resource-Policy
+    assets/sqlite3.wasm            # REQ-090 新增：从 node_modules/@sqlite.org/sqlite-wasm/dist/ 手动复制的未加 hash 原始 wasm 文件，修复 sqlite-wasm 运行时写死路径请求跟 Vite 构建 hash 文件名对不上导致数据库完全无法初始化的问题；升级这个依赖版本时需要记得重新复制
+    assets/sqlite3-opfs-async-proxy.js  # REQ-090 新增：同上，OPFS 异步代理 worker 的未加 hash 原始文件
   .gitattributes                 # REQ-056 新增：锁定 *.bat=CRLF / *.sh=LF，不依赖各贡献者本地 core.autocrlf 设置，防止跨平台协作时换行符被悄悄改错
   start-planto.bat               # 一键启动脚本 Windows 版（REQ-046 新增，~~REQ-055 修复成 ANSI/GBK 编码~~ **REQ-085 改成纯 ASCII 英文内容，不再依赖任何特定系统代码页，见 docs/KNOWLEDGE.md**；REQ-084 项目改名前叫 start-lifespark.bat）：cd 到自身目录 -> 首次自动 npm install -> npm run dev -- --open；配一个指向它的桌面快捷方式（本机文件，不在仓库里，改名后需要用户自己重新指向新文件名）
   start-planto.sh                # 一键启动脚本 Linux/macOS 版（REQ-056 新增，start-planto.bat 的对应版本；REQ-084 项目改名前叫 start-lifespark.sh；REQ-085 文案同步改成英文，保持两份脚本一致）：逻辑与 .bat 版一致；UTF-8 + LF 编码，需要 `chmod +x` 后用 `./start-planto.sh` 执行
+  serve-dist.cjs                 # REQ-087 新增：零依赖静态文件服务器，专门用来跑 `npm run build` 的 dist/ 产物（带上 OPFS 数据库需要的 COOP/COEP 响应头，通用静态服务器不会自动带；REQ-090 补上 Cross-Origin-Resource-Policy）；打包进 GitHub Release 的 dist 压缩包，下载解压后 `node serve-dist.cjs` 直接可用，不需要装任何依赖；`.cjs` 后缀是刻意的，见文件内注释——项目本身 package.json 是 "type":"module"，用 `.js` 会在"项目内"和"脱离项目单独解压"这两种场景里各自因为相反的原因报错；REQ-088 默认端口从 4173 改成 6060
+  .github/workflows/deploy-pages.yml  # REQ-089 新增：GitHub 官方 Pages 部署工作流模板，推送到 master 分支或手动触发时自动 `npm run build -- --base=/Planto/` 并部署到 GitHub Pages；仓库 Settings → Pages 需要用户手动选一次"GitHub Actions"来源，工作流本身没法代为完成这一步
   index.html                     # Vite 入口页面（挂载点 + gapi 外部脚本 + REQ-024 加载占位，REQ-030 改成带淡出动效的独立遮罩层，REQ-045 改成"清新治愈"风格动效；REQ-072 移除 GIS 脚本标签，Google 登录改手写整页跳转不再需要它）
   css/
     variables.css                # 设计 token（深色主题色板/间距/圆角，含明暗两套）
@@ -347,7 +353,7 @@ domain/utils 层只保留稳定的英文标识符（如 `'explore'`/`'novel'`/
   直接产出某一种语言的文案），`WeekBoard.vue` 里按 `week.warningCooldown`/
   `week.warningPool` 这两个 key 取模板翻译后再展示。
 
-## src/state/db.js（REQ-024，新增）
+## src/state/db.js（REQ-024，新增；REQ-090 修复运行时初始化会静默失败的严重 bug）
 
 职责：文件型数据库的读写封装——用官方 `@sqlite.org/sqlite-wasm` 包在
 Worker 线程里跑一份真正的 SQLite，靠 OPFS（Origin Private File System）
@@ -384,6 +390,25 @@ Worker 线程里跑一份真正的 SQLite，靠 OPFS（Origin Private File Syste
   用户要求把那个功能整个删除后，这三个接口一起撤回，`DB_FILENAME` 改回
   内部常量——这个文件回到 REQ-024 时只有 `readStateJson`/`writeStateJson`
   两个对外接口的形态，核心 OPFS SQLite 存储路径完全不受影响。）
+- **REQ-090 严重 bug 修复**：`sqlite3Worker1Promiser` 内部启动的
+  Worker 脚本用写死的相对路径（`new URL("sqlite3.wasm",
+  import.meta.url)`）请求自己的 wasm/OPFS 代理文件，跟 Vite 构建产物
+  给这些文件加的 hash 文件名（如 `sqlite3-BVKGSWc-.wasm`）对不上，
+  请求 404 导致这个 Worker 在能调用 `onready`/`onerror` 之前就直接
+  崩溃——两个回调都不会触发，`getPromiser()` 返回的 Promise 因此永远
+  不 resolve/reject，一路网上传导到 `main.js` 的 `bootstrap()` 卡死在
+  `await initStore()`。这个失败模式在真实浏览器里表现为"UI 界面正常
+  渲染"（`main.js` 顶部"数据库失败会兜底成默认状态"的注释假设的是
+  `onerror` 会被调用，没覆盖到"Worker 直接崩溃、两个回调都不触发"这种
+  更极端的情况），唯一能看出问题的地方是控制台报错和
+  `navigator.storage.getDirectory()` 检查——数据库其实从未真正
+  初始化过、也从未真正写入过任何数据。不限于任何特定部署方式：
+  dev/preview/静态托管全部复现，见 `docs/REQUESTS.md` REQ-090
+  条目的完整排查过程。修复靠新增的 `public/assets/sqlite3.wasm`/
+  `public/assets/sqlite3-opfs-async-proxy.js`（见这两个文件各自的
+  条目）解决路径不匹配，另外还需要 `Cross-Origin-Resource-Policy`
+  响应头（COEP:require-corp 要求每个子资源都带，不只是顶层页面）——
+  这一部分在 `vite.config.js`/`serve-dist.cjs` 条目里说明。
 
 ## src/state/persistence.js（REQ-024：读写后端从 localStorage 换成 state/db.js；REQ-025 加旧数据自动恢复；REQ-026 拆出可复用的读取函数，REQ-029 又改回内部函数；REQ-043 加导出/导入；REQ-058 类别/奖励种子数据加 seedKey；REQ-067 删除内置奖励种子数据；REQ-068 新增 monthLabels）
 

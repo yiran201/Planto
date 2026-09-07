@@ -50,8 +50,17 @@ Windows では [`start-planto.bat`](start-planto.bat) をダブルクリック�
 `chmod +x start-planto.sh && ./start-planto.sh` を実行してください。初回は自動で依存関係を
 インストールし、そのまま開発サーバーを起動します。
 
-> 独自の静的ホスティングにデプロイする場合、OPFS データベースに必要な COOP/COEP
+> 独自の静的ホスティングにデプロイする場合、OPFS データベースに必要な COOP/COEP/CORP
 > レスポンスヘッダーの設定が必要です。詳細は [`vite.config.js`](vite.config.js) を参照してください。
+> [Releases](../../releases) ページにビルド済みの `dist/` と、これらのヘッダーを
+> 自前で付与する依存ゼロの [`serve-dist.cjs`](serve-dist.cjs) を用意しています。
+> ダウンロードして解凍し `node serve-dist.cjs` を実行するだけで、追加の依存関係や
+> ビルド作業なしにそのまま動作します。リポジトリには GitHub Pages 自動デプロイ用の
+> ワークフロー（`.github/workflows/deploy-pages.yml`）も含まれています——静的
+> ホスティングではカスタムヘッダーを設定できないため、代わりに Service Worker
+> シム（`coi-serviceworker.js`）でブラウザ側からヘッダーを付与します。リポジトリの
+> Settings → Pages でソースを「GitHub Actions」に設定すれば、`master` への push
+> のたびに自動でビルド・デプロイされます。
 
 ## 🔗 Google カレンダー連携（任意）
 

@@ -1,0 +1,52 @@
+# Deploy the Vite production build to GitHub Pages (REQ-089).
+#
+# Builds with `--base=/Planto/` because GitHub Pages serves a repo
+# (as opposed to a username.github.io root repo or a custom domain) from
+# a subpath (https://<user>.github.io/Planto/), and Vite's asset URLs
+# need to know that prefix at build time. Local dev/preview and the
+# serve-dist.cjs release build both use the default root base, so this
+# flag is only passed here, not baked into vite.config.js.
+#
+# One-time manual step this workflow does not do for you: in the repo's
+# Settings -> Pages, set "Source" to "GitHub Actions". Until that's set,
+# this workflow can build successfully but the deploy step will fail.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build -- --base=/Planto/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

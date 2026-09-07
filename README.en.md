@@ -50,8 +50,15 @@ On Windows, double-click [`start-planto.bat`](start-planto.bat). On macOS / Linu
 `chmod +x start-planto.sh && ./start-planto.sh`. Both install dependencies on first run
 and then start the dev server automatically.
 
-> If you deploy to your own static host, you'll need to add the COOP/COEP response headers
-> (required by the OPFS-backed database) — see [`vite.config.js`](vite.config.js).
+> If you deploy to your own static host, you'll need to add the COOP/COEP/CORP response
+> headers (required by the OPFS-backed database) — see [`vite.config.js`](vite.config.js).
+> The [Releases](../../releases) page has a pre-built `dist/` bundle plus a zero-dependency
+> [`serve-dist.cjs`](serve-dist.cjs) (already sends these headers) — download, extract, and
+> `node serve-dist.cjs` just works, no dependencies or build step needed. The repo also ships
+> a GitHub Pages workflow (`.github/workflows/deploy-pages.yml`) — plain static hosting can't
+> set custom headers, so it uses a service worker shim (`coi-serviceworker.js`) to add them
+> client-side instead. Set Settings → Pages source to "GitHub Actions" once, then every push
+> to `master` deploys automatically.
 
 ## 🔗 Google Calendar Integration (optional)
 

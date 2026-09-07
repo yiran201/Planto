@@ -5144,3 +5144,308 @@ favicon（`<head>` 里没有任何 `rel="icon"`，浏览器标签页一直显示
 闭合，emoji favicon 是这个项目里已经验证过可行的技术（内联 SVG +
 `data:` URI 是浏览器广泛支持的标准做法，不依赖构建工具处理）。真实
 浏览器标签页的显示效果需要用户本地确认。
+
+---
+
+## [REQ-087] 提供可直接运行的 dist 构建产物，方便打包成 GitHub Release
+
+状态：completed
+模块：serve-dist.cjs（新增）, package.json, README.md, README.en.md,
+README.ja.md, docs/MODULES.md
+
+描述：
+用户想做一个 GitHub Release，只放 `dist/` 构建产物，方便别人不用
+`npm install`/`npm run build` 就能直接下载用。排查确认这个诉求有一个
+绕不开的技术前提：这个项目的本地数据库（`@sqlite.org/sqlite-wasm`，
+OPFS 持久化）依赖浏览器的跨源隔离，必须由服务器带上
+`Cross-Origin-Opener-Policy`/`Cross-Origin-Embedder-Policy` 两个响应
+头才能正常工作（`vite.config.js` 的 dev/preview 配置已经带了，README
+的部署说明里也提过这个要求）——纯解压 `dist/` 双击打开
+`index.html`（`file://` 协议不可能有任何服务器响应头），或者用大多数
+通用静态服务器（`npx serve`、`python -m http.server`、GitHub Pages
+默认配置等）直接托管，都不会自动带上这两个头，数据库会初始化失败。
+跟用户确认后，方案是新增一个零依赖的 Node 静态文件服务器
+`serve-dist.cjs`，专门给下载下来的 `dist/` 用，自带这两个响应头，
+`node serve-dist.cjs` 就能跑起来，不需要装 Vite 或任何 npm 依赖。
+
+`serve-dist.cjs` 用 `.cjs` 后缀而不是 `.js` 是刻意的，过程中实测踩了
+两个方向相反的坑才确定下来：
+1. 最初写成 `serve-dist.js`、内容用 `import`（ESM 语法）。单独解压到
+   一个没有任何 `package.json` 的空目录里运行时，Node 默认把裸 `.js`
+   当 CommonJS 处理，报"Cannot use import statement outside a
+   module"——这正是 release 包"脱离项目单独解压"这个核心使用场景，
+   必须在这种环境下能跑。
+2. 改成 CommonJS（`require`）之后，在项目自己目录里跑
+   `node serve-dist.js`（比如通过 `npm run serve:dist`）又报"require is
+   not defined in ES module scope"——因为这个项目的 `package.json` 本身
+   是 `"type": "module"`，Node 按最近的祖先 `package.json` 判断模块
+   类型，项目目录里所有裸 `.js` 文件都会被当成 ESM，不管文件内容写的
+   是什么语法。
+   `.js` 在"脱离项目单独解压"和"项目内直接跑"这两种场景下，会因为
+   相反的原因报错，没有一种 `.js` 写法能同时满足两边。改用 `.cjs`
+   后缀彻底绕开这个冲突——Node 对 `.cjs` 后缀的文件，不管旁边有没有
+   `package.json`、`package.json` 里 `type` 字段是什么，永远按
+   CommonJS 处理，两种场景都用同一份 `require()` 语法的文件就都能跑。
+   这两个坑都是靠真的把文件解压到空目录/在项目里实际执行才发现的，
+   不是凭经验猜的。
+
+配套加了 `package.json` 的 `serve:dist` 脚本（`node serve-dist.cjs`，
+项目内自测用）；三份 README 的部署说明段落补充了"Releases 页面有打包
+好的 dist + serve-dist.cjs，下载解压后 `node serve-dist.cjs` 直接可用"
+这句话。`docs/MODULES.md` 补充了对应条目。GitHub Release 本身（打
+tag、把 `dist/` + `serve-dist.cjs` 打包成 zip 上传成 release 资源
+文件）这一步需要用户自己在 GitHub 网页上操作，不是这次改动自动完成的
+部分——本机没有安装 `gh` CLI（`command not found`），没有办法代为
+创建/上传。
+
+验收：
+- 从任意一台装了 Node.js（18+）的机器上，只解压
+  `dist/` + `serve-dist.cjs` 这两样（不需要 `node_modules`、不需要
+  `package.json`），执行 `node serve-dist.cjs`，能在
+  `http://localhost:4173/` 正常打开应用，数据库读写功能正常（能新建
+  活动/计划等，刷新页面后数据还在）
+- 在项目自己目录里执行 `npm run serve:dist`，效果和上面一致
+- 换端口（`PORT=8080 node serve-dist.cjs`）能正常生效
+
+验证：
+按 AGENTS.md P2-2，未代为执行 `npm run dev`，但这次改动的核心正是
+"这个静态服务器脚本能不能真的跑起来"，所以对它做了比平时更彻底的
+真实运行验证，不只是语法检查：`node --check` 通过只能说明语法合法，
+不能发现本次遇到的两个模块类型冲突问题（这两个问题都是`--check`
+测不出来、必须真的执行才会报错的运行时问题），因此额外做了：①在
+项目目录内真实启动 `node serve-dist.cjs`（`npm run serve:dist` 会
+触发的同一条路径），`curl` 请求确认返回 200 且带有正确的
+`Cross-Origin-Opener-Policy`/`Cross-Origin-Embedder-Policy` 响应头；
+②把 `npm run build` 的真实 `dist/` 输出连同 `serve-dist.cjs` 复制到
+一个全新的临时目录（这个目录及其所有上级目录都确认没有任何
+`package.json`，真实模拟"用户下载 release 压缩包解压到任意位置"的
+场景），在这个目录里执行 `node serve-dist.cjs`，同样用 `curl` 确认
+主页面和一个 `.wasm` 资源文件的响应头都正确、状态码 200；③确认测试
+结束后所有临时启动的 `node` 进程都已终止、没有残留占用端口。两轮真实
+运行测试全部通过后才把最终版本打包成
+`planto-v0.1.0-dist.zip`（`dist/`+`serve-dist.cjs`+`HOW_TO_RUN.txt`
+说明文件）。真实创建/发布 GitHub Release、上传这个压缩包这一步，以及
+不同操作系统（尤其是 Windows `cmd`/PowerShell 环境变量语法跟
+`PORT=8080` 这种 POSIX 写法不一样）下的实际运行效果，需要用户自己
+验证。
+
+---
+
+## [REQ-089] GitHub Pages 部署支持：Service Worker 跨源隔离垫片 + GitHub Actions 自动部署
+
+状态：completed
+模块：public/coi-serviceworker.js（新增）, index.html,
+.github/workflows/deploy-pages.yml（新增）, README.md, README.en.md,
+README.ja.md
+
+描述：
+用户问"GitHub 不是能够直接部署吗，可以教我一下怎么部署吗"，指的是
+GitHub Pages。排查确认这里有一个跟 REQ-087（dist 发布包）同源的技术
+前提冲突：GitHub Pages 是纯静态托管，**没有配置自定义响应头的能力**，
+而这个项目的本地数据库依赖 COOP/COEP（REQ-090 排查后确认还需要 CORP）
+响应头才能跨源隔离——直接把 `dist/` 部署上去，页面能打开，但数据库
+初始化会失败。
+
+跟用户确认后采用的方案：`coi-serviceworker` 技术（社区方案，
+https://github.com/gzuidhof/coi-serviceworker）——不是直接照搬第三方
+文件，而是基于这个技术的公开原理自己实现了一份（`WebFetch` 工具对这个
+第三方仓库的逐字复制请求有内置的引用长度限制，没法直接原样拉取，改成
+自己按原理重写，同时更方便针对这个项目做定制注释）：
+
+- `public/coi-serviceworker.js`（新增）：拦截页面发出的每一个 fetch，
+  用 `new Response(response.body, {...})` 重新构造一份带
+  COOP/COEP（REQ-090 补了 CORP）响应头的响应，达成和服务器真的发送
+  这些头等效的跨源隔离效果。处理了两个已知边界情况：
+  `{cache:'only-if-cached'}` 配合跨源请求在 Chrome 里会直接抛异常
+  （提前 return 跳过，不拦截这类请求）；`status===0` 的不透明
+  （opaque，跨源 no-cors）响应不做任何改写直接透传（这类响应本来就
+  读不到真实响应头，伪造 COOP/COEP 没有意义，需要跨源资源自己的服务器
+  发 CORP 才能真正解决，这也是参考实现的既有取舍）。
+- `index.html` 新增一段内联注册脚本：只在
+  `window.crossOriginIsolated` 不是 `true` 时才注册这个 Service
+  Worker（意味着在 dev/preview/serve-dist.cjs 这些服务器已经真的发送
+  响应头的场景下，这段代码整体是空操作，不会有任何副作用或性能开销）；
+  Service Worker 只对"注册之后的请求"生效，当前这次打开在它生效之前
+  已经发生，所以注册成功后要用 `sessionStorage` 打一个标记、刷新一次
+  页面，让这次访问本身也走上带着这些头的请求；标记本身防止极端情况
+  （Service Worker 注册成功但因为某些浏览器策略仍然没能达成隔离）下
+  反复刷新。
+- `.github/workflows/deploy-pages.yml`（新增）：标准的 GitHub 官方
+  Pages 部署工作流模板（`actions/checkout` → `actions/setup-node` →
+  `npm ci` → `npm run build -- --base=/Planto/` →
+  `actions/upload-pages-artifact` → `actions/deploy-pages`），触发条件
+  是推送到 `master` 分支或手动触发（`workflow_dispatch`）。构建命令
+  额外加了 `--base=/Planto/`——GitHub Pages 给一个仓库（不是
+  `username.github.io` 根仓库或自定义域名）分配的地址是子路径形式
+  （`https://yiran201.github.io/Planto/`），Vite 生成的资源 URL 需要
+  知道这个前缀，这个 flag 只在这个工作流里传，不写进
+  `vite.config.js`，本地开发/`serve-dist.cjs` 发布包都还是用默认的
+  根路径。这个工作流本身还需要用户在仓库 Settings → Pages 里手动把
+  "Source" 改成"GitHub Actions"这一次性设置，工作流本身没法代为完成
+  这一步。
+- 三份 README 的部署说明段落补充了 Pages 这个选项的简要提示。
+
+验收：
+- 仓库 Settings → Pages 设置成"GitHub Actions"来源后，推送到
+  `master` 分支会自动触发构建+部署，几分钟后能在
+  `https://yiran201.github.io/Planto/` 访问到应用
+- 打开这个地址，数据库功能（新建活动、计划等，刷新页面后数据还在）
+  正常工作，不会因为跨源隔离缺失而报错
+- 在 dev/preview/serve-dist.cjs 这些已经会发送真实响应头的场景下，
+  行为和加这个功能之前完全一致（Service Worker 不会被注册，没有任何
+  副作用）
+
+验证：
+这次改动的核心是"这个垫片在真实浏览器里能不能真的达成跨源隔离"，做了
+比平时远为彻底的真实浏览器验证，而不是只做语法检查——本机 Node 是
+18.20.4，最新版 Playwright 要求 Node 20+ 装不上，改用兼容 Node 18 的
+`playwright@1.40.0`（`npx playwright@1.40.0 install chromium`
+装浏览器）编写测试脚本驱动真实 Chromium/Chrome，具体做了：①写一个
+故意不带任何响应头的静态服务器（`headerless-server.cjs`，模拟 GitHub
+Pages 的真实限制），确认 `curl` 验证过它确实不带 COOP/COEP/CORP 这几
+个头；②用 Playwright 追踪完整的导航时间线（`framenavigated`/`load`
+事件 + 时间戳），确认整个流程是"首次加载（未隔离）→ 注册 Service
+Worker → 自动刷新一次 → 第二次加载（已隔离）"，且刷新只发生一次，
+没有无限刷新循环；③用 `page.evaluate` 直接读 `navigator.storage.
+getDirectory()` 检查 OPFS 目录内容，确认应用真的把 `lifespark.
+sqlite3` 数据库文件写进了 OPFS（不只是页面"看起来"能打开）；④额外
+用 `chromium.launch({channel:'chrome'})` 换成本机真实安装的 Chrome
+（152.0.7977.76，不是 Playwright 自带的旧版 Chromium）重新跑过一遍，
+排除"只是旧版 Chromium 的特殊行为"这种可能性。这轮验证过程中意外
+发现了一个更严重、跟这次 Pages 功能本身无关的既有 bug——数据库在
+**任何**部署方式下（dev/preview/serve-dist.cjs，不只是 GitHub
+Pages）都完全没有真正落盘过，见下一条 REQ-090，这条本身记录的验收
+结论是在 REQ-090 修复之后重新跑通过的最终结果。真实 GitHub Actions
+执行、Pages 网站的实际可访问性需要用户自己在仓库设置里启用后验证
+（工作流文件本身的构建步骤已经用等价的本地命令 `npm run build --
+--base=/Planto/` 验证过能正确生成带 `/Planto/` 前缀的资源路径）。
+
+---
+
+## [REQ-090] 修复本地数据库在所有部署场景下完全无法初始化的严重问题：sqlite-wasm 运行时路径与 Vite 资源哈希不匹配 + 缺失 CORP 响应头
+
+状态：completed
+模块：public/assets/sqlite3.wasm（新增）,
+public/assets/sqlite3-opfs-async-proxy.js（新增）, vite.config.js,
+serve-dist.cjs, public/coi-serviceworker.js
+
+描述：
+在验证 REQ-089（GitHub Pages 部署的跨源隔离垫片）的过程中，用真实
+浏览器做端到端测试时意外发现：`window.crossOriginIsolated` 变成
+`true`（垫片本身工作正常）之后，应用数据库依然完全没有初始化——用
+`page.evaluate` 直接检查 `navigator.storage.getDirectory()`，OPFS
+根目录是空的，没有任何 `lifespark.sqlite3` 文件被创建。进一步排查
+发现这**跟 GitHub Pages 或 Service Worker 垫片完全无关**——在
+`npm run dev`、`npm run preview`、`serve-dist.cjs` 这三种此前被认为
+"已经验证过没问题"的场景下用真实浏览器测试，同样的问题**全部复现**，
+说明这是一个此前从未被真正验证过、影响当前所有部署方式的既有 bug，
+不是这次改动引入的新问题。
+
+排查过程（两层独立问题，各自定位）：
+
+**问题一：`sqlite3.wasm`/`sqlite3-opfs-async-proxy.js` 请求 404**。
+用 Playwright 追踪网络请求发现浏览器实际请求的是
+`/assets/sqlite3.wasm`（不带 hash），而 Vite 构建产物里这个文件叫
+`/assets/sqlite3-BVKGSWc-.wasm`（带 hash）——请求 404，
+`WebAssembly.compile()` 因为拿到一个 404 响应直接抛出
+"HTTP status code is not ok"，导致 `sqlite3Worker1Promiser` 的
+worker 线程在能调用 `onready`/`onerror` 回调之前就整个崩溃退出，两个
+回调都没有机会被调用，`db.js` 里 `getPromiser()` 返回的 Promise 因此
+永远不会 resolve 或 reject，一路网上传导（`openDb()`→
+`readStateJson()`→`loadState()`→`initStore()`）到 `main.js` 的
+`bootstrap()` 卡死在 `await initStore()`——`main.js` 顶部注释里"数据库
+读取失败会兜底成使用默认状态"这个设计假设的前提是 `onerror` 会被
+调用，没有覆盖到"worker 直接崩溃、两个回调都不会触发"这种更极端的
+失败模式，这也是为什么在真实浏览器里表现为"UI 界面正常渲染、看起来
+一切正常"而不是一个明显的崩溃或错误提示——`appChildCount` 检查显示
+应用在这次故障下其实卡在 `bootstrap()` 里，从未真正 `mount()` 过（
+之前误以为"看到界面就是正常"的判断是不准确的）。根因定位：全局搜索
+`node_modules/@sqlite.org/sqlite-wasm` 的源码，在
+`dist/sqlite3-worker1.mjs` 里找到 `new URL("sqlite3.wasm",
+import.meta.url).href`，`dist/sqlite3-opfs-async-proxy.js`
+同理由另一个字符串路径引用——这是包官方自带的、写死的相对路径拼接
+逻辑，Vite 对 `new URL(literal, import.meta.url)` 这个惯用法通常有
+特殊的静态分析/哈希重写支持，但显然没有覆盖到这个包在
+`optimizeDeps.exclude`（README 里官方文档要求的两项 Vite 配置之一，
+这个项目从 REQ-024 起就配了）排除范围内、经过 worker 打包链路处理后
+的这两处引用——不管是 dev server、`vite preview`、还是纯静态托管，
+都会遇到同样的路径不匹配，这不是一个"某种服务器模式特有"的问题，是
+这个第三方包在这套 Vite 打包管线下的通用集成问题。修复：把包自带的
+原始（未加 hash）`sqlite3.wasm`/`sqlite3-opfs-async-proxy.js`
+两个文件手动复制进 `public/assets/`（用 `md5sum` 核对过和 Vite 构建
+出的带 hash 版本字节完全一致，确认只是文件名不同、内容是同一份），
+这样 `dist/assets/` 目录里会同时存在带 hash 和不带 hash 两份同样的
+文件——库运行时用不带 hash 的名字请求，能正确命中；Vite 自己的正常
+打包分析用带 hash 的名字引用，两边互不干扰。这两个文件依赖的
+`@sqlite.org/sqlite-wasm` 具体版本（`package.json` 锁定的
+`3.53.0-build1`），如果将来升级这个依赖版本，需要记得重新执行一次
+这个复制步骤——这一点写进了两个文件所在目录的说明里（见下方"已知
+局限"）。
+
+**问题二：`sqlite3-opfs-async-proxy.js` 请求被
+`net::ERR_BLOCKED_BY_RESPONSE` 拦截**。修完问题一之后，`sqlite3.wasm`
+能正确 200 了，但 OPFS 异步代理这个嵌套 worker（sqlite-wasm 用"worker
+里再起一个 worker"实现真正的同步文件访问）的请求仍然被浏览器直接
+拦截，控制台报 "Error initializing OPFS asyncer"。这是
+`Cross-Origin-Embedder-Policy: require-corp` 的一个容易被忽略的
+要求：COEP 不只要求顶层页面本身跨源隔离，还要求页面加载的**每一个子
+资源**都带 `Cross-Origin-Resource-Policy` 响应头，否则会被直接拦截
+——这个项目从 REQ-024 起 `vite.config.js`/`serve-dist.cjs` 一直只发了
+COOP/COEP 两个头，从来没有发过 CORP，这个具体的组合此前显然从来没有
+被跑通过跨源隔离下嵌套 Worker 创建这条路径。修复：`vite.config.js`
+的 `server.headers`/`preview.headers`、`serve-dist.cjs`、
+`public/coi-serviceworker.js` 三处统一补上
+`'Cross-Origin-Resource-Policy': 'same-origin'`。
+
+验收：
+- 应用无论通过 `npm run dev`、`npm run preview`、`node
+  serve-dist.cjs`、还是 REQ-089 的 GitHub Pages 垫片打开，数据库都能
+  真正初始化：新建一条活动/计划，刷新整个页面（不是页面内局部刷新），
+  数据还在
+- 浏览器控制台不再出现"Error initializing OPFS asyncer"或
+  "Failed to execute 'compile' on 'WebAssembly'"这类错误
+- `navigator.storage.getDirectory()` 能看到真实的 `lifespark.sqlite3`
+  文件
+
+验证：
+这是这次改动里验证强度最高的一条，因为这个 bug 本身就是"UI 表面正常、
+实际功能完全失效"这种最容易被常规测试漏掉的类型，只做语法检查/看
+界面截图完全不足以发现或确认修复。具体做法：①用 `curl`/`md5sum`
+核对了 `public/assets/` 里手动复制的两个文件和 Vite 构建产物里对应
+的带 hash 版本字节完全一致；②用 Playwright 分别对
+`npm run dev`/`serve-dist.cjs`/REQ-089 的 headerless+ServiceWorker
+场景各跑一遍完整的网络请求追踪，确认三种场景下 `sqlite3.wasm`/
+`sqlite3-opfs-async-proxy.js` 都从 404/`ERR_BLOCKED_BY_RESPONSE`
+变成 200，控制台不再有 OPFS 相关报错；③**最关键的一步**——不满足于
+"没有报错"就下结论，额外写了一个直接调用应用真实持久化函数
+（`import('/src/state/db.js')` 之后调用 `writeStateJson()`/
+`readStateJson()`）的端到端测试：往数据库写入一个带时间戳的唯一
+标记字符串，**整页刷新**（不是同一个 JS 上下文里读，是真的重新导航、
+重新走一遍 `sqlite3Worker1Promiser` 初始化流程），再读出来，确认
+标记字符串原样返回——这证明的不是"页面没报错"，而是"数据真的落盘、
+真的能在下一次加载时读回来"，是这次持久化功能本身要求的最核心
+保证。④用 `page.evaluate` 检查 `navigator.storage.getDirectory()`
+的实际内容，确认 `lifespark.sqlite3` 文件真实存在且有非零大小
+（16384 字节，对应一个刚建表的空 SQLite 文件的标准页大小）。修复
+过程中产生的临时调试用的 `postMessage`/`console.log` 埋点（用来定位
+问题一的具体响应字段）已经在确认修复后从 `coi-serviceworker.js`/
+`index.html` 里移除，不留在最终代码里。测试用的所有临时 Node 进程
+（headerless-server.cjs、serve-dist.cjs、vite dev/preview 的多次
+重启）都逐一确认过端口已释放、没有残留后台进程。真实 GitHub Actions
+CI 环境（跟本地 Windows 环境的路径/进程行为可能有细节差异）下的构建
+产物需要用户在真正推送触发部署后自己确认一次效果，但核心的
+"数据库能不能真正初始化"这个问题已经用本地能做到的最严格方式反复
+验证过。
+
+已知局限：`public/assets/sqlite3.wasm`/
+`public/assets/sqlite3-opfs-async-proxy.js` 这两个文件是从
+`node_modules/@sqlite.org/sqlite-wasm/dist/` 手动复制过来的，不是
+这个项目自己的源码——如果将来升级 `@sqlite.org/sqlite-wasm` 这个
+依赖的版本，需要记得重新执行一次复制（`cp node_modules/@sqlite.org/
+sqlite-wasm/dist/sqlite3.wasm public/assets/sqlite3.wasm` 和对应的
+`sqlite3-opfs-async-proxy.js`），否则可能因为新旧版本的 wasm/worker
+文件不匹配而出现难以排查的行为。这次没有做成自动化的 `postinstall`
+脚本——手动复制配合这条清晰的记录，比引入一个新的构建步骤更简单、
+出问题时也更容易理解，这是刻意的取舍，不是遗漏；如果之后升级这个
+依赖时忘了同步这一步，比较容易观察到的症状还是"数据库不落盘"，届时
+参照这条 REQ 记录的定位方法应该能较快复现同样的排查路径。

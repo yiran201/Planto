@@ -5,6 +5,113 @@
 
 ---
 
+## 2026-09-06（第十次追加）
+
+**REQ-090：修复本地数据库在所有部署场景下完全无法初始化的严重问题**
+
+验证 REQ-089 的 GitHub Pages 垫片时，用真实浏览器端到端测试意外发现
+跨源隔离达成之后数据库依然完全没有初始化——OPFS 里没有任何数据库
+文件。排查确认这跟 GitHub Pages 无关，`npm run dev`/`npm run
+preview`/`serve-dist.cjs` 这三种此前"以为已经验证过"的场景全部同样
+复现，是一个从未被真正验证过的既有 bug。
+
+两层原因：①`@sqlite.org/sqlite-wasm` 的 worker 脚本用
+`new URL("sqlite3.wasm", import.meta.url)` 这类写死的相对路径请求
+wasm/OPFS 代理文件，Vite 构建产物却把这些文件加了 hash
+（`sqlite3-BVKGSWc-.wasm`），请求 404，`WebAssembly.compile()` 抛出
+异常导致 worker 直接崩溃、`onready`/`onerror` 两个回调都不会触发，
+`bootstrap()` 永远卡在 `await initStore()`——UI 界面照常渲染，表面
+看起来"一切正常"，实际上数据库从未真正落盘过。修复：把包自带的
+未加 hash 原始文件手动复制进 `public/assets/`。②修完①之后 OPFS
+异步代理这个嵌套 worker 的请求被 `net::ERR_BLOCKED_BY_RESPONSE`
+拦截——`Cross-Origin-Embedder-Policy:require-corp` 要求每个子资源都
+带 `Cross-Origin-Resource-Policy`，这个项目从 REQ-024 起一直没发过
+这个头。修复：`vite.config.js`/`serve-dist.cjs`/
+`coi-serviceworker.js` 三处补上这个响应头。
+
+**验证**（REQ-090）：这个 bug 本身就是"界面正常、功能完全失效"的
+类型，只看界面/日志不足以发现。用 Playwright 写了一个直接调用
+`writeStateJson()`/`readStateJson()` 的端到端测试：写入带时间戳的
+唯一标记、整页刷新（重新走一遍数据库初始化流程）、读回确认标记原样
+返回，同时用 `navigator.storage.getDirectory()` 确认
+`lifespark.sqlite3` 文件真实存在。在 dev/preview/serve-dist.cjs/
+GitHub Pages 垫片四种场景下都各自验证过。已知局限：`public/assets/`
+里手动复制的两个文件如果将来升级 `@sqlite.org/sqlite-wasm` 版本需要
+记得同步更新，详见 REQUESTS.md。
+
+---
+
+## 2026-09-06（第九次追加）
+
+**REQ-089：GitHub Pages 部署支持——Service Worker 跨源隔离垫片 + GitHub Actions 自动部署**
+
+用户问"GitHub 不是能够直接部署吗，可以教我一下怎么部署吗"，指
+GitHub Pages。这里有跟 REQ-087 同源的技术前提冲突：GitHub Pages
+不支持自定义响应头，而本地数据库依赖 COOP/COEP 才能跨源隔离。方案
+用 `coi-serviceworker` 技术（自己按公开原理实现，不是直接照搬第三方
+文件）：新增 `public/coi-serviceworker.js` 拦截每个 fetch 补上响应
+头，`index.html` 里加注册脚本（只在还没跨源隔离时才生效，其余场景
+是空操作），配一个标准的 GitHub Actions 工作流
+（`.github/workflows/deploy-pages.yml`）自动构建部署到 Pages。
+
+**验证**（REQ-089）：本机 Node 18 装不了最新版 Playwright，改用
+`playwright@1.40.0` 驱动真实 Chromium/Chrome 做端到端测试：故意用一个
+不带任何响应头的静态服务器模拟 GitHub Pages，追踪导航时间线确认
+"首次加载（未隔离）→ 注册 Service Worker → 自动刷新一次 → 已隔离"
+且没有无限刷新循环，额外换成本机真实 Chrome（非 Playwright 自带的
+旧版 Chromium）复测过一遍。这轮验证中意外发现了一个更严重、跟这次
+功能本身无关的既有 bug，见 REQ-090。
+
+---
+
+## 2026-09-06（第八次追加）
+
+**REQ-088：serve-dist.cjs 默认端口从 4173 改成 6060**
+
+用户反馈想让 release 包里 `serve-dist.cjs` 的默认端口跟开发服务器
+（`vite.config.js` 固定的 6060）保持一致，不用因为跑的是哪个服务器
+就记两个不同的地址。改了一行 `PORT` 默认值，重新打包并在项目内/
+脱离项目单独解压两种场景下各实测了一遍，确认 `curl` 返回 200 且带
+正确的 COOP/COEP 响应头。
+
+---
+
+## 2026-09-06（第七次追加）
+
+**REQ-087：提供可直接运行的 dist 构建产物，方便打包成 GitHub Release**
+
+用户想做一个只含 `dist/` 构建产物的 GitHub Release。排查确认这个
+项目的本地数据库（OPFS SQLite）依赖跨源隔离，必须由服务器带上
+COOP/COEP 两个响应头才能工作——纯解压双击 `index.html`，或者用通用
+静态服务器（`npx serve`/`python -m http.server`/GitHub Pages）直接
+托管，都不会自动带这两个头，数据库会初始化失败。新增零依赖的
+`serve-dist.cjs`，自带这两个响应头，`node serve-dist.cjs` 直接可用，
+不需要装任何依赖。
+
+`.cjs` 后缀是刻意的：最初写成 `.js` + ESM `import`，脱离项目单独
+解压到空目录运行报"Cannot use import statement outside a module"；
+改成 `.js` + CommonJS `require` 后，在项目自己目录里跑又因为
+`package.json` 的 `"type":"module"` 报"require is not defined in ES
+module scope"——`.js` 在两种场景下会因为相反的原因报错，改用 `.cjs`
+（Node 对这个后缀永远按 CommonJS 处理，不受任何 `package.json`
+影响）才同时满足"脱离项目单独解压"和"项目内直接跑"两种场景。这两个
+坑都是真实执行才发现的，不是凭经验猜的。
+
+三份 README 补充了 Releases 页面的使用说明，`docs/MODULES.md` 加了
+对应条目，`package.json` 新增 `serve:dist` 脚本。GitHub Release 本身
+（打 tag、上传 zip）需要用户自己在网页上操作——本机没装 `gh` CLI。
+
+**验证**（REQ-087）：这次改动核心是"脚本能不能真的跑起来"，做了比
+平时更彻底的真实运行验证：①项目目录内启动，`curl` 确认响应头正确；
+②把真实 `dist/` 产物复制到一个确认没有任何 `package.json` 的全新
+临时目录，模拟"下载 release 压缩包解压到任意位置"，同样 `curl`
+验证主页面和 `.wasm` 资源的响应头/状态码；③确认测试进程全部清理
+干净、无残留端口占用。两轮测试通过后才打包成
+`planto-v0.1.0-dist.zip`。真实发布 Release、Windows 环境变量语法
+差异下的运行效果需要用户自己验证。
+
+---
+
 ## 2026-09-06（第六次追加）
 
 **REQ-086：浏览器标签页标题去掉中文副标题，只保留 Planto；新增 🌱 favicon**
